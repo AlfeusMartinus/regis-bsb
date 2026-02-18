@@ -1,4 +1,5 @@
 import React from 'react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export const EventSidebar: React.FC = () => {
     return (
@@ -8,11 +9,14 @@ export const EventSidebar: React.FC = () => {
 
             <div className="relative z-10 flex flex-col h-auto md:h-full p-6 md:p-10 lg:p-12 md:overflow-y-auto custom-scrollbar">
                 {/* Header / Branding */}
-                <div className="flex items-center gap-3 mb-8 md:mb-12">
-                    <div className="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary">
-                        <span className="material-symbols-outlined text-2xl">cloud</span>
+                <div className="flex justify-center w-full mb-6 md:mb-10">
+                    <div className="w-full max-w-[280px] md:max-w-[320px]">
+                        <DotLottieReact
+                            src="https://lottie.host/ca6648d4-f8a0-427f-962d-bbfdee204611/rfYtFmCLS4.lottie"
+                            loop
+                            autoplay
+                        />
                     </div>
-                    <h2 className="text-xl font-bold tracking-tight">Regis-BSB</h2>
                 </div>
 
                 {/* Event Title */}

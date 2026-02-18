@@ -6,6 +6,7 @@ import { SuccessView } from './SuccessView';
 import { personalSchema, donationSchema } from '../../../lib/validationSchema';
 import { z } from 'zod';
 import { clsx } from 'clsx';
+import { supabase } from '../../../lib/supabase';
 
 // Merge schemas for the full form state
 const registrationSchema = personalSchema.merge(donationSchema);
@@ -14,6 +15,7 @@ type RegistrationFormData = z.infer<typeof registrationSchema>;
 export const RegistrationForm: React.FC = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success'>('idle');
+    const [isLoading, setIsLoading] = useState(false);
 
     // Steps reduced to 2
     const steps = ["Data Diri", "Donasi"];
@@ -22,17 +24,17 @@ export const RegistrationForm: React.FC = () => {
         register,
         trigger,
         watch,
+        getValues,
         setValue,
         formState: { errors }
     } = useForm<RegistrationFormData>({
         resolver: zodResolver(registrationSchema),
         mode: 'onChange',
         defaultValues: {
-            amount: '', 
+            amount: '',
         }
     });
 
-    const donationAmount = watch('amount');
     const status = watch('status');
 
     const handleNext = async () => {
@@ -52,18 +54,43 @@ export const RegistrationForm: React.FC = () => {
         }
     };
 
-    const handleGenerateQR = async () => {
+    const handleGeneratePayment = async () => {
         const isValid = await trigger(['amount', 'prayer']);
         if (!isValid) return;
 
-        setPaymentStatus('pending');
-    };
+        setIsLoading(true);
+        try {
+            const formData = getValues();
 
-    const handleCheckPaymentStatus = () => {
-        // Simulate checking payment status
-        setTimeout(() => {
-            setPaymentStatus('success');
-        }, 1000);
+            const { data, error } = await supabase.functions.invoke('create-payment', {
+                body: {
+                    amount: parseInt(formData.amount),
+                    name: formData.fullName,
+                    email: formData.email,
+                    phone: formData.whatsapp,
+                    prayer: formData.prayer
+                }
+            });
+
+            if (error) {
+                console.error("Payment Function Error:", error);
+                alert("Gagal membuat pembayaran: " + error.message);
+                return;
+            }
+
+            if (data?.link) {
+                // Redirect to Mayar
+                window.location.href = data.link;
+            } else {
+                alert("Gagal mendapatkan link pembayaran.");
+            }
+
+        } catch (err) {
+            console.error("Unexpected Error:", err);
+            alert("Terjadi kesalahan sistem.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleRegisterOther = () => {
@@ -74,6 +101,17 @@ export const RegistrationForm: React.FC = () => {
         // Reset other fields if needed, or keep them for convenience? Better to reset.
         // For now, minimal reset.
     };
+
+    // Check URL params for payment success/failure on mount (optional, not fully implemented here but good to have prepared)
+    React.useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const paymentParam = params.get('payment');
+        if (paymentParam === 'success') {
+            setPaymentStatus('success');
+            // Clean up URL
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, []);
 
     // If payment is successful, show the success view covering the form
     if (paymentStatus === 'success') {
@@ -266,7 +304,7 @@ export const RegistrationForm: React.FC = () => {
                                             id="amount"
                                             placeholder="Masukkan nominal donasi..."
                                             type="number"
-                                            disabled={paymentStatus === 'pending'}
+                                            disabled={isLoading}
                                         />
                                     </div>
                                     {errors.amount && <span className="text-xs text-red-500">{errors.amount.message}</span>}
@@ -282,52 +320,21 @@ export const RegistrationForm: React.FC = () => {
                                         id="prayer"
                                         placeholder="Semoga acaranya lancar dan berkah..."
                                         rows={4}
-                                        disabled={paymentStatus === 'pending'}
+                                        disabled={isLoading}
                                     ></textarea>
                                 </div>
                             </div>
-
-                            {/* Dynamic QRIS Section */}
-                            {paymentStatus === 'pending' && (
-                                <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 flex flex-col items-center text-center animate-[fadeIn_0.5s_ease-out]">
-                                    <p className="text-sm font-bold text-slate-700 mb-4">Scan QRIS Berikut untuk Membayar</p>
-
-                                    {/* Mock QRIS Image */}
-                                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-4">
-                                        <img
-                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=MOCK_PAYMENT_${donationAmount}`}
-                                            alt="QRIS Code"
-                                            className="w-48 h-48 object-contain"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1 mb-6">
-                                        <p className="text-xs text-slate-500">Total Pembayaran</p>
-                                        <p className="text-2xl font-black text-[#111814]">Rp {parseInt(donationAmount || '0').toLocaleString('id-ID')}</p>
-                                    </div>
-
-                                    <p className="text-xs text-slate-400 mb-4">QRIS otomatis dicek oleh sistem...</p>
-
-                                    <button
-                                        type="button"
-                                        onClick={handleCheckPaymentStatus}
-                                        className="w-full py-3 bg-white border border-gray-300 text-slate-700 font-bold rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        Cek Status Pembayaran
-                                    </button>
-                                </div>
-                            )}
                         </div>
                     </section>
                 )}
 
                 {/* Navigation Buttons */}
                 <div className="flex items-center justify-between gap-4 mt-4">
-                    {currentStep > 1 && paymentStatus !== 'idle' ? (
+                    {currentStep > 1 ? (
                         <button
                             type="button"
                             onClick={handleBack}
-                            disabled={paymentStatus === 'pending'}
+                            disabled={isLoading}
                             className="px-6 h-12 rounded-lg border border-gray-300 text-slate-700 font-bold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Kembali
@@ -346,17 +353,16 @@ export const RegistrationForm: React.FC = () => {
                             <span className="material-symbols-outlined text-sm">arrow_forward</span>
                         </button>
                     ) : (
-                        // Final Step Action: Generate QR or Payment processing (Button hidden if pending to focus on QR)
-                        paymentStatus !== 'pending' && (
-                            <button
-                                type="button"
-                                onClick={handleGenerateQR}
-                                className="px-8 h-12 bg-primary hover:bg-primary-dark text-[#111814] font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center gap-2"
-                            >
-                                Lanjutkan
-                                <span className="material-symbols-outlined text-sm">payments</span>
-                            </button>
-                        )
+                        // Final Step Action: Generate Payment Link
+                        <button
+                            type="button"
+                            onClick={handleGeneratePayment}
+                            disabled={isLoading}
+                            className="px-8 h-12 bg-primary hover:bg-primary-dark text-[#111814] font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center gap-2"
+                        >
+                            {isLoading ? 'Memproses...' : 'Lanjut Pembayaran'}
+                            {!isLoading && <span className="material-symbols-outlined text-sm">payments</span>}
+                        </button>
                     )}
                 </div>
 

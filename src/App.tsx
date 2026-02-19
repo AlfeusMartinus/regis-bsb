@@ -3,6 +3,7 @@ import { Login } from './components/admin/Login';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { Dashboard } from './components/admin/Dashboard';
 import { CreateEvent } from './components/admin/CreateEvent';
+import { EditEvent } from './components/admin/EditEvent';
 // EventList is now used inside Dashboard
 import { PublicEventPage } from './pages/PublicEventPage';
 // import { HomePage } from './pages/HomePage'; // Optional
@@ -22,6 +23,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="events" element={<Navigate to="/admin/dashboard?tab=events" replace />} />
           <Route path="events/create" element={<CreateEvent />} />
+          <Route path="events/edit/:id" element={<EditEvent />} />
         </Route>
 
         {/* Fallback / Default */}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Link } from 'react-router-dom';
-import { Loader2, Plus, ExternalLink, Calendar } from 'lucide-react';
+import { Loader2, Plus, ExternalLink, Calendar, Edit } from 'lucide-react';
 
 export const EventList: React.FC = () => {
     const [events, setEvents] = useState<any[]>([]);
@@ -122,9 +122,14 @@ export const EventList: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 flex items-center justify-end gap-1">
-                                            View <ExternalLink size={14} />
-                                        </a>
+                                        <div className="flex items-center justify-end gap-3">
+                                            <a href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700" title="View Public Page">
+                                                <ExternalLink size={16} />
+                                            </a>
+                                            <Link to={`/admin/events/edit/${event.id}`} className="text-indigo-600 hover:text-indigo-900" title="Edit Event">
+                                                <Edit size={16} />
+                                            </Link>
+                                        </div>
                                     </td>
                                 </tr>
                             ))

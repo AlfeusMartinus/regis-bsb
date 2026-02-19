@@ -12,14 +12,48 @@ export const EventList: React.FC = () => {
     }, []);
 
     const fetchEvents = async () => {
-        const { data, error } = await supabase
+        // 1. Fetch all events
+        const { data: eventsData, error: eventsError } = await supabase
             .from('events')
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (error) console.error(error);
-        else setEvents(data || []);
+        if (eventsError) {
+            console.error(eventsError);
+            setLoading(false);
+            return;
+        }
 
+        // 2. Fetch all registration counts grouped by event_id manually
+        // We fetch all 'event_id' from registrations to count them.
+        // Optimized: .select('event_id', { count: 'exact' }) gives total count, not grouped.
+        // So we might need to fetch all 'event_id' (lightweight) and count in JS.
+        const { data: regData, error: regError } = await supabase
+            .from('registrations')
+            .select('event_id');
+
+        if (regError) {
+            console.error(regError);
+            setEvents(eventsData || []);
+            setLoading(false);
+            return;
+        }
+
+        // Count occurrences
+        const counts: Record<string, number> = {};
+        regData?.forEach((reg: any) => {
+            if (reg.event_id) {
+                counts[reg.event_id] = (counts[reg.event_id] || 0) + 1;
+            }
+        });
+
+        // Merge counts into events
+        const eventsWithCounts = eventsData?.map((event) => ({
+            ...event,
+            registrant_count: counts[event.id] || 0
+        }));
+
+        setEvents(eventsWithCounts || []);
         setLoading(false);
     };
 
@@ -44,6 +78,7 @@ export const EventList: React.FC = () => {
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registrants</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -52,7 +87,7 @@ export const EventList: React.FC = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {events.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                                     No events found. Create your first one!
                                 </td>
                             </tr>
@@ -68,6 +103,15 @@ export const EventList: React.FC = () => {
                                             <Calendar size={16} className="mr-2" />
                                             {new Date(event.date_time).toLocaleDateString()}
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <Link
+                                            to={`/admin/dashboard?tab=registrants&eventId=${event.id}`}
+                                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer"
+                                            title="View Registrants"
+                                        >
+                                            {event.registrant_count} Registrants
+                                        </Link>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {event.location}

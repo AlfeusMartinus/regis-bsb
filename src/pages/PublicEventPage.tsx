@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { MainLayout } from '../components/layout/MainLayout';
 import { EventSidebar } from '../components/features/registration/EventSidebar';

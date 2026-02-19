@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Upload } from 'lucide-react';
 
 interface Speaker {
     name: string;
@@ -22,7 +22,7 @@ interface EventFormHelper {
 }
 
 export const CreateEvent: React.FC = () => {
-    const { register, control, handleSubmit, formState: { errors }, watch } = useForm<EventFormHelper>({
+    const { register, control, handleSubmit } = useForm<EventFormHelper>({
         defaultValues: {
             speakers: [{ name: '', title: '' }],
             moderator: { name: '', title: '' }

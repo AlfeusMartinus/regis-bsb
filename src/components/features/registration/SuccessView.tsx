@@ -4,7 +4,7 @@ interface SuccessViewProps {
     onRegisterOther: () => void;
 }
 
-export const SuccessView: React.FC<SuccessViewProps> = ({ onRegisterOther }) => {
+export const SuccessView: React.FC<SuccessViewProps> = () => {
     return (
         <div className="flex flex-1 flex-col items-center justify-center p-4 sm:p-6 lg:p-10 relative w-full h-full min-h-[500px]">
             {/* Decorative Background Elements */}

@@ -1,7 +1,54 @@
 import React from 'react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
-export const EventSidebar: React.FC = () => {
+interface Speaker {
+    name: string;
+    title: string;
+    photo_url?: string;
+}
+
+interface EventData {
+    title: string;
+    category?: string;
+    description?: string;
+    date_time: string;
+    location: string;
+    speakers?: Speaker[];
+    moderator?: Speaker;
+}
+
+interface EventSidebarProps {
+    event?: EventData | null;
+    loading?: boolean;
+}
+
+export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) => {
+    // Fallback/Loading state
+    if (loading) {
+        return <div className="flex items-center justify-center h-full text-slate-400">Loading Event...</div>;
+    }
+
+    // Fallback if no event provided (or default view) - keeping original static data as "Default" or "Example" if needed
+    // But for dynamic, we should rely on props.
+    // If !event, we can show a skeleton or return null.
+    // Let's use the static data as a "Template" fallback if event is missing (or maybe redirect happened).
+    const displayEvent = event || {
+        title: "GenAI Google Cloud ML Optimization",
+        category: "Cloud",
+        description: "Mastering serverless architecture with industry experts. Join us for a deep dive into modern cloud solutions.",
+        date_time: "2024-10-24T10:00:00",
+        location: "Online / Zoom",
+        speakers: [
+            { name: "Ahmad Fulan", title: "Google Developer Expert", photo_url: "https://i.pravatar.cc/150?u=a042581f4e29026024d" },
+            { name: "Siti Aminah", title: "Cloud Architect at Startup", photo_url: "https://i.pravatar.cc/150?u=a042581f4e29026704d" }
+        ],
+        moderator: { name: "Budi Setiawan", title: "Community Lead", photo_url: "https://i.pravatar.cc/150?u=a04258114e29026704d" }
+    };
+
+    const eventDate = new Date(displayEvent.date_time);
+    const dateStr = eventDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = eventDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
+
     return (
         <>
             {/* Background Pattern/Image */}
@@ -21,14 +68,16 @@ export const EventSidebar: React.FC = () => {
 
                 {/* Event Title */}
                 <div className="mb-8 md:mb-auto">
-                    <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary-dark text-xs font-bold uppercase tracking-wider mb-4">
-                        Cloud
-                    </div>
+                    {displayEvent.category && (
+                        <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary-dark text-xs font-bold uppercase tracking-wider mb-4">
+                            {displayEvent.category}
+                        </div>
+                    )}
                     <h1 className="text-3xl md:text-4xl lg:text-5xl font-black leading-[1.1] tracking-tight mb-4 text-[#111814]">
-                        GenAI Google Cloud ML Optimization
+                        {displayEvent.title}
                     </h1>
                     <p className="text-slate-500 text-lg leading-relaxed">
-                        Mastering serverless architecture with industry experts. Join us for a deep dive into modern cloud solutions.
+                        {displayEvent.description}
                     </p>
                 </div>
 
@@ -40,7 +89,7 @@ export const EventSidebar: React.FC = () => {
                         </div>
                         <div>
                             <p className="text-sm text-slate-500 font-medium">Tanggal</p>
-                            <p className="font-bold text-[#111814]">Sabtu, 24 Okt 2024</p>
+                            <p className="font-bold text-[#111814]">{dateStr}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-4">
@@ -49,7 +98,7 @@ export const EventSidebar: React.FC = () => {
                         </div>
                         <div>
                             <p className="text-sm text-slate-500 font-medium">Waktu</p>
-                            <p className="font-bold text-[#111814]">10:00 - 14:00 WIB</p>
+                            <p className="font-bold text-[#111814]">{timeStr}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-4">
@@ -58,7 +107,7 @@ export const EventSidebar: React.FC = () => {
                         </div>
                         <div>
                             <p className="text-sm text-slate-500 font-medium">Lokasi</p>
-                            <p className="font-bold text-[#111814]">Online / Zoom</p>
+                            <p className="font-bold text-[#111814]">{displayEvent.location}</p>
                         </div>
                     </div>
                 </div>
@@ -66,70 +115,54 @@ export const EventSidebar: React.FC = () => {
                 {/* Speakers & Moderator Section */}
                 <div className="mt-8 flex flex-col gap-6">
                     {/* Speakers */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-4">
-                            <span className="w-1 h-5 bg-primary rounded-full"></span>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pemateri</p>
-                        </div>
-                        <div className="flex flex-col gap-3">
-                            {/* Speaker Card 1 */}
-                            <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent bg-gray-50/50 hover:bg-white hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 transform hover:-translate-y-1 cursor-default">
-                                <div className="relative shrink-0">
-                                    <img
-                                        src="https://i.pravatar.cc/150?u=a042581f4e29026024d"
-                                        alt="Ahmad Fulan"
-                                        className="w-12 h-12 rounded-full object-cover ring-2 ring-white group-hover:ring-primary transition-all duration-300"
-                                    />
-                                    <div className="absolute -bottom-1 -right-1 bg-primary text-[10px] text-[#111814] font-bold px-1.5 py-0.5 rounded-full border border-white shadow-sm">
-                                        GDE
-                                    </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-[#111814] text-sm leading-tight group-hover:text-primary transition-colors truncate">Ahmad Fulan</p>
-                                    <p className="text-xs text-slate-500 line-clamp-1 group-hover:text-slate-600">Google Developer Expert</p>
-                                </div>
+                    {displayEvent.speakers && displayEvent.speakers.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <span className="w-1 h-5 bg-primary rounded-full"></span>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pemateri</p>
                             </div>
-
-                            {/* Speaker Card 2 */}
-                            <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent bg-gray-50/50 hover:bg-white hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 transform hover:-translate-y-1 cursor-default">
-                                <div className="relative shrink-0">
-                                    <img
-                                        src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
-                                        alt="Siti Aminah"
-                                        className="w-12 h-12 rounded-full object-cover ring-2 ring-white group-hover:ring-primary transition-all duration-300"
-                                    />
-                                    <div className="absolute -bottom-1 -right-1 bg-blue-500 text-[10px] text-white font-bold px-1.5 py-0.5 rounded-full border border-white shadow-sm">
-                                        Cloud
+                            <div className="flex flex-col gap-3">
+                                {displayEvent.speakers.map((speaker, idx) => (
+                                    <div key={idx} className="group flex items-center gap-4 p-3 rounded-xl border border-transparent bg-gray-50/50 hover:bg-white hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 transform hover:-translate-y-1 cursor-default">
+                                        <div className="relative shrink-0">
+                                            <img
+                                                src={speaker.photo_url || `https://ui-avatars.com/api/?name=${speaker.name}&background=random`}
+                                                alt={speaker.name}
+                                                className="w-12 h-12 rounded-full object-cover ring-2 ring-white group-hover:ring-primary transition-all duration-300"
+                                            />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-[#111814] text-sm leading-tight group-hover:text-primary transition-colors truncate">{speaker.name}</p>
+                                            <p className="text-xs text-slate-500 line-clamp-1 group-hover:text-slate-600">{speaker.title}</p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-[#111814] text-sm leading-tight group-hover:text-primary transition-colors truncate">Siti Aminah</p>
-                                    <p className="text-xs text-slate-500 line-clamp-1 group-hover:text-slate-600">Cloud Architect at Startup</p>
-                                </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Moderator */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-4">
-                            <span className="w-1 h-5 bg-blue-400 rounded-full"></span>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Moderator</p>
-                        </div>
-                        <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent bg-blue-50/30 hover:bg-white hover:border-blue-400/30 hover:shadow-lg hover:shadow-blue-400/10 transition-all duration-300 transform hover:-translate-y-1 cursor-default">
-                            <div className="relative shrink-0">
-                                <img
-                                    src="https://i.pravatar.cc/150?u=a04258114e29026704d"
-                                    alt="Budi Setiawan"
-                                    className="w-12 h-12 rounded-full object-cover ring-2 ring-white group-hover:ring-blue-400 transition-all duration-300"
-                                />
+                    {displayEvent.moderator && displayEvent.moderator.name && (
+                        <div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <span className="w-1 h-5 bg-blue-400 rounded-full"></span>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Moderator</p>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-bold text-[#111814] text-sm leading-tight group-hover:text-blue-600 transition-colors truncate">Budi Setiawan</p>
-                                <p className="text-xs text-slate-500 line-clamp-1 group-hover:text-slate-600">Community Lead</p>
+                            <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent bg-blue-50/30 hover:bg-white hover:border-blue-400/30 hover:shadow-lg hover:shadow-blue-400/10 transition-all duration-300 transform hover:-translate-y-1 cursor-default">
+                                <div className="relative shrink-0">
+                                    <img
+                                        src={displayEvent.moderator.photo_url || `https://ui-avatars.com/api/?name=${displayEvent.moderator.name}&background=random`}
+                                        alt={displayEvent.moderator.name}
+                                        className="w-12 h-12 rounded-full object-cover ring-2 ring-white group-hover:ring-blue-400 transition-all duration-300"
+                                    />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-[#111814] text-sm leading-tight group-hover:text-blue-600 transition-colors truncate">{displayEvent.moderator.name}</p>
+                                    <p className="text-xs text-slate-500 line-clamp-1 group-hover:text-slate-600">{displayEvent.moderator.title}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Organizer Footer */}

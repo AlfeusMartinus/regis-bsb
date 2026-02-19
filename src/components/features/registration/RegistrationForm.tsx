@@ -12,7 +12,13 @@ import { supabase } from '../../../lib/supabase';
 const registrationSchema = personalSchema.merge(donationSchema);
 type RegistrationFormData = z.infer<typeof registrationSchema>;
 
-export const RegistrationForm: React.FC = () => {
+interface RegistrationFormProps {
+    eventId?: string;
+    eventName?: string;
+    eventSlug?: string;
+}
+
+export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success'>('idle');
     const [isLoading, setIsLoading] = useState(false);
@@ -68,7 +74,10 @@ export const RegistrationForm: React.FC = () => {
                     name: formData.fullName,
                     email: formData.email,
                     phone: formData.whatsapp,
-                    prayer: formData.prayer
+                    prayer: formData.prayer,
+                    eventId: eventId,
+                    eventName: eventName,
+                    eventSlug: eventSlug
                 }
             });
 
@@ -98,11 +107,9 @@ export const RegistrationForm: React.FC = () => {
         setPaymentStatus('idle');
         setValue('amount', '');
         setValue('prayer', '');
-        // Reset other fields if needed, or keep them for convenience? Better to reset.
-        // For now, minimal reset.
     };
 
-    // Check URL params for payment success/failure on mount (optional, not fully implemented here but good to have prepared)
+    // Check URL params for payment success/failure on mount
     React.useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const paymentParam = params.get('payment');
@@ -287,7 +294,7 @@ export const RegistrationForm: React.FC = () => {
                                         <span className="block mt-1 font-semibold text-xs">(QS. Al-Baqarah: 271)</span>
                                     </p>
                                     <p className="text-emerald-700 text-sm">
-                                        Ohiyaa untuk registrasinya kamu hanya cukup berdonasi tanpa minimal berapapun, 100% donasi akan kami salurkan untuk yg membutuhkan. Sedekah dianjurkan di setiap waktu selagi kita memiliki kelapangan baik tenaga, pikiran, maupun harta.
+                                        Ohiyaa untuk registrasinya kamu hanya cukup berdonasi tanpa minimal berapapun, seluruh donasi akan kami salurkan untuk yg membutuhkan. Sedekah dianjurkan di setiap waktu selagi kita memiliki kelapangan baik tenaga, pikiran, maupun harta.
                                     </p>
                                 </div>
 
@@ -367,7 +374,7 @@ export const RegistrationForm: React.FC = () => {
                 </div>
 
                 <footer className="text-center text-slate-400 text-sm py-4">
-                    © 2026
+                    © 2026 {eventName && `• ${eventName}`}
                 </footer>
             </form>
         </div>

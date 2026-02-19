@@ -311,6 +311,25 @@ export const RegistrantList: React.FC = () => {
                             ))
                         )}
                     </tbody>
+                    <tfoot className="bg-gray-50 font-semibold text-gray-900">
+                        <tr>
+                            <td colSpan={5} className="px-6 py-3 text-right">Total Amount (All Status):</td>
+                            <td className="px-6 py-3 whitespace-nowrap">
+                                Rp {filteredRegistrants.reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0).toLocaleString()}
+                            </td>
+                            <td colSpan={4}></td>
+                        </tr>
+                        <tr className="bg-green-50 text-green-900">
+                            <td colSpan={5} className="px-6 py-3 text-right">Total Settle Amount:</td>
+                            <td className="px-6 py-3 whitespace-nowrap font-bold">
+                                Rp {filteredRegistrants
+                                    .filter(reg => ['paid', 'settlement', 'success'].includes(reg.status?.toLowerCase()))
+                                    .reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0)
+                                    .toLocaleString()}
+                            </td>
+                            <td colSpan={4}></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>

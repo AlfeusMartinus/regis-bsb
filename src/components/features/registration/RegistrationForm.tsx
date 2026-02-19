@@ -77,7 +77,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     prayer: formData.prayer,
                     eventId: eventId,
                     eventName: eventName,
-                    eventSlug: eventSlug
+                    eventSlug: eventSlug,
+                    currentStatus: formData.status,
+                    institution: formData.status === 'student' ? formData.major : formData.institution
                 }
             });
 
@@ -367,8 +369,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                             disabled={isLoading}
                             className="px-8 h-12 bg-primary hover:bg-primary-dark text-[#111814] font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center gap-2"
                         >
-                            {isLoading ? 'Memproses...' : 'Lanjut Pembayaran'}
-                            {!isLoading && <span className="material-symbols-outlined text-sm">payments</span>}
+                            {isLoading ? 'Memproses...' : (
+                                <>
+                                    Proses Donasi
+                                    <span className="material-symbols-outlined text-sm">payments</span>
+                                </>
+                            )}
                         </button>
                     )}
                 </div>
@@ -377,6 +383,24 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     © 2026 {eventName && `• ${eventName}`}
                 </footer>
             </form>
+            {/* Full Screen Loading Overlay */}
+            {isLoading && (
+                <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-[fadeIn_0.3s_ease-out]">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm text-center">
+                        <div className="relative mb-6">
+                            <div className="w-16 h-16 border-4 border-gray-100 rounded-full"></div>
+                            <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-primary text-2xl">payments</span>
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Memproses Donasi</h3>
+                        <p className="text-gray-500 text-sm">
+                            Bismillah, sebentar yaa.. InsyaAllah kami siapkan halaman donasinya untukmu ✨
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

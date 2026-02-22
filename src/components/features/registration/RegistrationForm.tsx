@@ -3,14 +3,20 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Stepper } from '../../ui/Stepper';
 import { SuccessView } from './SuccessView';
+import { CancelView } from './CancelView';
 import { personalSchema, donationSchema } from '../../../lib/validationSchema';
 import { z } from 'zod';
 import { clsx } from 'clsx';
 import { supabase } from '../../../lib/supabase';
 
-// Merge schemas for the full form state
 const registrationSchema = personalSchema.merge(donationSchema);
 type RegistrationFormData = z.infer<typeof registrationSchema>;
+
+declare global {
+    interface Window {
+        loadJokulCheckout: (url: string) => void;
+    }
+}
 
 interface RegistrationFormProps {
     eventId?: string;
@@ -20,10 +26,9 @@ interface RegistrationFormProps {
 
 export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug }) => {
     const [currentStep, setCurrentStep] = useState(1);
-    const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success'>('idle');
+    const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Steps reduced to 2
     const steps = ["Data Diri", "Donasi"];
 
     const {
@@ -90,8 +95,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             }
 
             if (data?.link) {
-                // Redirect to Mayar
-                window.location.href = data.link;
+                sessionStorage.setItem('is_initiating_payment', 'true');
+
+                if (window.loadJokulCheckout) {
+                    window.loadJokulCheckout(data.link);
+                } else {
+                    window.location.href = data.link;
+                }
             } else {
                 alert("Gagal mendapatkan link pembayaran.");
             }
@@ -115,16 +125,34 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
     React.useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const paymentParam = params.get('payment');
-        if (paymentParam === 'success') {
+        const isInitiated = sessionStorage.getItem('is_initiating_payment') === 'true';
+
+        if ((paymentParam === 'success' || paymentParam === 'result') && isInitiated) {
             setPaymentStatus('success');
-            // Clean up URL
+            sessionStorage.removeItem('is_initiating_payment');
+            window.history.replaceState({}, '', window.location.pathname);
+        } else if (paymentParam === 'cancel' && isInitiated) {
+            setPaymentStatus('cancel');
+            sessionStorage.removeItem('is_initiating_payment');
+            window.history.replaceState({}, '', window.location.pathname);
+            setCurrentStep(2);
+        } else if (paymentParam) {
             window.history.replaceState({}, '', window.location.pathname);
         }
     }, []);
 
+    const handleRetryPayment = () => {
+        setPaymentStatus('idle');
+        setCurrentStep(2);
+    };
+
     // If payment is successful, show the success view covering the form
     if (paymentStatus === 'success') {
         return <SuccessView onRegisterOther={handleRegisterOther} />;
+    }
+
+    if (paymentStatus === 'cancel') {
+        return <CancelView onRetry={handleRetryPayment} />;
     }
 
     return (
@@ -133,7 +161,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
 
             <form className="flex flex-col gap-8 mt-8" onSubmit={(e) => e.preventDefault()}>
 
-                {/* Step 1: Data Diri */}
                 {currentStep === 1 && (
                     <section className="bg-white p-6 md:p-8 rounded-xl border border-[#e5e7eb] shadow-sm animate-[fadeIn_0.3s_ease-in-out]">
                         <div className="flex items-center gap-3 mb-6">
@@ -264,7 +291,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     </section>
                 )}
 
-                {/* Step 2: Donasi & Pembayaran */}
+
                 {currentStep === 2 && (
                     <section className="bg-white p-6 md:p-8 rounded-xl border border-[#e5e7eb] shadow-sm relative overflow-hidden animate-[fadeIn_0.3s_ease-in-out]">
                         <div className="absolute top-0 right-0 p-3 bg-yellow-100 rounded-bl-xl border-l border-b border-yellow-200">
@@ -280,7 +307,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
 
                         <div className="grid grid-cols-1 gap-6">
                             <div className="flex flex-col gap-6">
-                                {/* Ramadhan / Charity Context Card */}
+
                                 <div className="bg-emerald-50/80 border border-emerald-100 rounded-xl p-6 relative overflow-hidden">
                                     <div className="absolute top-0 right-0 opacity-10 pointer-events-none">
                                         <span className="material-symbols-outlined text-[120px] text-emerald-800 -mr-8 -mt-8">mosque</span>
@@ -337,7 +364,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     </section>
                 )}
 
-                {/* Navigation Buttons */}
                 <div className="flex items-center justify-between gap-4 mt-4">
                     {currentStep > 1 ? (
                         <button
@@ -349,7 +375,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                             Kembali
                         </button>
                     ) : (
-                        <div></div> // Spacer
+                        <div />
                     )}
 
                     {currentStep < steps.length ? (
@@ -362,7 +388,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                             <span className="material-symbols-outlined text-sm">arrow_forward</span>
                         </button>
                     ) : (
-                        // Final Step Action: Generate Payment Link
                         <button
                             type="button"
                             onClick={handleGeneratePayment}
@@ -383,7 +408,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     © 2026 {eventName && `• ${eventName}`}
                 </footer>
             </form>
-            {/* Full Screen Loading Overlay */}
+
             {isLoading && (
                 <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-[fadeIn_0.3s_ease-out]">
                     <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm text-center">
@@ -402,5 +427,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 </div>
             )}
         </div>
+
     );
 };

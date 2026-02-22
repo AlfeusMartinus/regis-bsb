@@ -65,10 +65,10 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                             {displayEvent.category}
                         </div>
                     )}
-                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-black leading-[1.1] tracking-tight mb-4 text-[#111814]">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-black leading-[1.1] tracking-tight mb-4 text-[#111814] break-words">
                         {displayEvent.title}
                     </h1>
-                    <p className="text-slate-500 text-lg leading-relaxed">
+                    <p className="text-slate-500 text-base md:text-lg leading-relaxed break-words">
                         {displayEvent.description}
                     </p>
                 </div>

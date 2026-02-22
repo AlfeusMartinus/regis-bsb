@@ -23,15 +23,10 @@ interface EventSidebarProps {
 }
 
 export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) => {
-    // Fallback/Loading state
     if (loading) {
         return <div className="flex items-center justify-center h-full text-slate-400">Loading Event...</div>;
     }
 
-    // Fallback if no event provided (or default view) - keeping original static data as "Default" or "Example" if needed
-    // But for dynamic, we should rely on props.
-    // If !event, we can show a skeleton or return null.
-    // Let's use the static data as a "Template" fallback if event is missing (or maybe redirect happened).
     const displayEvent = event || {
         title: "GenAI Google Cloud ML Optimization",
         category: "Cloud",
@@ -51,11 +46,9 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
 
     return (
         <>
-            {/* Background Pattern/Image */}
             <div className="absolute inset-0 z-0 opacity-10 bg-[radial-gradient(#13ec6d_1px,transparent_1px)] [background-size:16px_16px]"></div>
 
             <div className="relative z-10 flex flex-col h-auto md:h-full p-6 md:p-10 lg:p-12 md:overflow-y-auto custom-scrollbar">
-                {/* Header / Branding */}
                 <div className="flex justify-center w-full mb-6 md:mb-10">
                     <div className="w-full max-w-[280px] md:max-w-[320px]">
                         <DotLottieReact
@@ -66,7 +59,6 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                     </div>
                 </div>
 
-                {/* Event Title */}
                 <div className="mb-8 md:mb-auto">
                     {displayEvent.category && (
                         <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary-dark text-xs font-bold uppercase tracking-wider mb-4">
@@ -81,7 +73,6 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                     </p>
                 </div>
 
-                {/* Event Meta Data */}
                 <div className="flex flex-col gap-5 mt-8 md:mt-12">
                     <div className="flex items-start gap-4">
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-100 text-[#111814]">
@@ -112,7 +103,6 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                     </div>
                 </div>
 
-                {/* Speakers & Moderator Section */}
                 <div className="mt-8 flex flex-col gap-6">
                     {/* Speakers */}
                     {displayEvent.speakers && displayEvent.speakers.length > 0 && (
@@ -165,7 +155,6 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                     )}
                 </div>
 
-                {/* Organizer Footer */}
                 <div className="mt-8 md:mt-auto pt-8 border-t border-gray-100">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Diselenggarakan Oleh</p>
                     <div className="flex items-center gap-4 opacity-80 grayscale hover:grayscale-0 transition-all duration-300">

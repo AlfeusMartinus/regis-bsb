@@ -26,7 +26,7 @@ export const personalSchema = z.object({
 });
 
 export const donationSchema = z.object({
-    amount: z.string().min(1, { message: "Nominal donasi wajib diisi" }).refine((val) => parseInt(val) >= 30000, { message: "Minimal donasi adalah Rp 30.000" }),
+    amount: z.string().min(1, { message: "Nominal donasi wajib diisi" }),
     prayer: z.string().optional(),
 });
 

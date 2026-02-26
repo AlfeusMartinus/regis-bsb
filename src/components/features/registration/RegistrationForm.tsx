@@ -22,9 +22,10 @@ interface RegistrationFormProps {
     eventId?: string;
     eventName?: string;
     eventSlug?: string;
+    minimumDonation?: number;
 }
 
-export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug }) => {
+export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug, minimumDonation = 1000 }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +40,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
         setValue,
         formState: { errors }
     } = useForm<RegistrationFormData>({
-        resolver: zodResolver(registrationSchema),
+        resolver: zodResolver(registrationSchema.refine((data) => parseInt(data.amount) >= minimumDonation, { 
+            message: `Minimal donasi adalah Rp ${minimumDonation.toLocaleString('id-ID')}`, 
+            path: ['amount'] 
+        })),
         mode: 'onChange',
         defaultValues: {
             amount: '',
@@ -352,7 +356,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                     )}
 
                                     <p className="text-xs text-slate-500">
-                                        Minimal donasi <span className="font-semibold text-slate-700">Rp 30.000</span>. Kontribusi Anda sangat berarti bagi mereka.
+                                        Minimal donasi <span className="font-semibold text-slate-700">Rp {minimumDonation.toLocaleString('id-ID')}</span>. Kontribusi Anda sangat berarti bagi mereka.
                                     </p>
                                 </div>
 

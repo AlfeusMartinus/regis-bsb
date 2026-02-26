@@ -19,6 +19,7 @@ interface EventFormHelper {
     location: string;
     speakers: Speaker[];
     moderator: Speaker;
+    minimum_donation?: number;
 }
 
 export const EditEvent: React.FC = () => {
@@ -81,7 +82,8 @@ export const EditEvent: React.FC = () => {
                     date_time: localIso,
                     location: data.location,
                     speakers: speakers.length > 0 ? speakers : [{ name: '', title: '' }],
-                    moderator: moderator
+                    moderator: moderator,
+                    minimum_donation: data.minimum_donation
                 });
             }
         } catch (error) {
@@ -150,7 +152,8 @@ export const EditEvent: React.FC = () => {
                     date_time: new Date(formData.date_time).toISOString(), // Convert back to UTC ISO
                     location: formData.location,
                     speakers: speakersData,
-                    moderator: moderatorData
+                    moderator: moderatorData,
+                    minimum_donation: formData.minimum_donation ? Number(formData.minimum_donation) : 1000
                 })
                 .eq('id', id);
 
@@ -196,6 +199,11 @@ export const EditEvent: React.FC = () => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Date & Time</label>
                         <input type="datetime-local" {...register('date_time', { required: true })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Minimum Donation (IDR)</label>
+                        <input type="number" {...register('minimum_donation')} placeholder="1000" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2" />
+                        <p className="text-xs text-gray-500 mt-1">Default: 1000</p>
                     </div>
                 </div>
 

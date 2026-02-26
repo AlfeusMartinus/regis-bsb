@@ -328,7 +328,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                 </div>
 
                                 <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-semibold text-[#111814]" htmlFor="amount">Nominal Donasi (IDR)</label>
+                                    <label className="text-sm font-semibold text-[#111814]" htmlFor="amount">
+                                        Nominal Donasi (IDR)
+                                    </label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Rp</span>
                                         <input
@@ -343,8 +345,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                             disabled={isLoading}
                                         />
                                     </div>
-                                    {errors.amount && <span className="text-xs text-red-500">{errors.amount.message}</span>}
-                                    <p className="text-xs text-slate-500">Donasi sukarela, berapapun nominalnya akan sangat berarti.</p>
+                                    {errors.amount && (
+                                        <span className="text-xs text-red-500 font-medium">
+                                            {errors.amount.message}
+                                        </span>
+                                    )}
+
+                                    <p className="text-xs text-slate-500">
+                                        Minimal donasi <span className="font-semibold text-slate-700">Rp 30.000</span>. Kontribusi Anda sangat berarti bagi mereka.
+                                    </p>
                                 </div>
 
                                 <div className="flex flex-col gap-2">

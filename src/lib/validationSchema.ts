@@ -1,14 +1,22 @@
 import { z } from 'zod';
 
-export const personalSchema = z.object({
+export const personalBaseSchema = z.object({
     fullName: z.string().min(3, { message: "Nama lengkap minimal 3 karakter" }),
     email: z.string().email({ message: "Format email tidak valid" }),
     whatsapp: z.string().min(10, { message: "Nomor WhatsApp minimal 10 digit" }).regex(/^\d+$/, { message: "Hanya boleh angka" }),
     domicile: z.string().min(1, { message: "Domisili wajib diisi" }),
-    status: z.enum(['student', 'professional']),
+    status: z.enum(['student', 'professional'], { 
+        message: "Pilih status Anda" 
+    }),
     major: z.string().optional(),
     institution: z.string().optional(),
-}).superRefine((data, ctx) => {
+    uses_external_peripherals: z.boolean({ message: "Pilihan wajib diisi" }),
+    mouse_brand: z.string().optional(),
+    work_device_factors: z.array(z.string()).min(1, { message: "Pilih minimal 1 faktor" }),
+    work_device_factors_others: z.string().optional(),
+});
+
+export const personalSchema = personalBaseSchema.superRefine((data, ctx) => {
     if (data.status === 'student' && !data.major) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -21,6 +29,20 @@ export const personalSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: "Instansi/Perusahaan wajib diisi untuk Profesional",
             path: ['institution'],
+        });
+    }
+    if (data.uses_external_peripherals === true && !data.mouse_brand) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Merek mouse wajib diisi",
+            path: ['mouse_brand'],
+        });
+    }
+    if (data.work_device_factors.includes('Others') && !data.work_device_factors_others) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Sebutkan faktor lainnya",
+            path: ['work_device_factors_others'],
         });
     }
 });

@@ -4,13 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Stepper } from '../../ui/Stepper';
 import { SuccessView } from './SuccessView';
 import { CancelView } from './CancelView';
-import { personalSchema, donationSchema } from '../../../lib/validationSchema';
+import { personalBaseSchema, donationSchema } from '../../../lib/validationSchema';
 import { z } from 'zod';
 import { clsx } from 'clsx';
 import { supabase } from '../../../lib/supabase';
 
-const registrationSchema = personalSchema.merge(donationSchema);
-type RegistrationFormData = z.infer<typeof registrationSchema>;
+const registrationBaseSchema = personalBaseSchema.merge(donationSchema);
+type RegistrationFormData = z.infer<typeof registrationBaseSchema>;
 
 declare global {
     interface Window {
@@ -40,22 +40,76 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
         setValue,
         formState: { errors }
     } = useForm<RegistrationFormData>({
-        resolver: zodResolver(registrationSchema.refine((data) => parseInt(data.amount) >= minimumDonation, { 
-            message: `Minimal donasi adalah Rp ${minimumDonation.toLocaleString('id-ID')}`, 
-            path: ['amount'] 
+        resolver: zodResolver(registrationBaseSchema.superRefine((data, ctx) => {
+            // 1. Personal refinements
+            if (data.status === 'student' && !data.major) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Jurusan wajib diisi untuk Mahasiswa",
+                    path: ['major'],
+                });
+            }
+            if (data.status === 'professional' && !data.institution) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Instansi/Perusahaan wajib diisi untuk Profesional",
+                    path: ['institution'],
+                });
+            }
+            if (data.uses_external_peripherals === true && !data.mouse_brand) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Merek mouse wajib diisi",
+                    path: ['mouse_brand'],
+                });
+            }
+            if (data.work_device_factors.includes('Others') && !data.work_device_factors_others) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Sebutkan faktor lainnya",
+                    path: ['work_device_factors_others'],
+                });
+            }
+
+            // 2. Donation refinements
+            if (data.amount && parseInt(data.amount) < minimumDonation) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `Minimal donasi adalah Rp ${minimumDonation.toLocaleString('id-ID')}`,
+                    path: ['amount']
+                });
+            }
         })),
         mode: 'onChange',
         defaultValues: {
             amount: '',
+            uses_external_peripherals: undefined,
+            work_device_factors: [],
+            mouse_brand: '',
+            work_device_factors_others: ''
         }
     });
 
     const status = watch('status');
+    const usesExternal = watch('uses_external_peripherals');
+    const selectedFactors = watch('work_device_factors') || [];
 
     const handleNext = async () => {
         let isValid = false;
         if (currentStep === 1) {
-            isValid = await trigger(['fullName', 'email', 'whatsapp', 'domicile', 'status', 'major', 'institution']);
+            isValid = await trigger([
+                'fullName',
+                'email',
+                'whatsapp',
+                'domicile',
+                'status',
+                'major',
+                'institution',
+                'uses_external_peripherals',
+                'mouse_brand',
+                'work_device_factors',
+                'work_device_factors_others'
+            ]);
         }
 
         if (isValid) {
@@ -88,7 +142,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     eventName: eventName,
                     eventSlug: eventSlug,
                     currentStatus: formData.status,
-                    institution: formData.status === 'student' ? formData.major : formData.institution
+                    institution: formData.status === 'student' ? formData.major : formData.institution,
+                    uses_external_peripherals: formData.uses_external_peripherals,
+                    mouse_brand: formData.mouse_brand,
+                    work_device_factors: formData.work_device_factors,
+                    work_device_factors_others: formData.work_device_factors_others
                 }
             });
 
@@ -291,6 +349,94 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                     </div>
                                 </div>
                             )}
+
+                            <div className="flex flex-col gap-2 md:col-span-2 pt-4 border-t border-gray-100">
+                                <label className="text-sm font-semibold text-[#111814]">1. Apakah Anda menggunakan mouse/keyboard eksternal?</label>
+                                <div className="flex gap-4 mt-1">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={usesExternal === true}
+                                            onChange={() => setValue('uses_external_peripherals', true, { shouldValidate: true })}
+                                            className="size-4 accent-primary"
+                                        />
+                                        <span className="text-sm">YA</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={usesExternal === false}
+                                            onChange={() => setValue('uses_external_peripherals', false, { shouldValidate: true })}
+                                            className="size-4 accent-primary"
+                                        />
+                                        <span className="text-sm">TIDAK</span>
+                                    </label>
+                                </div>
+                                {errors.uses_external_peripherals && <span className="text-xs text-red-500">{errors.uses_external_peripherals.message}</span>}
+                            </div>
+
+                            {usesExternal === true && (
+                                <div className="flex flex-col gap-2 md:col-span-2 animate-[fadeIn_0.3s_ease-out]">
+                                    <label className="text-sm font-semibold text-[#111814]" htmlFor="mouse_brand">2. Apa merek mouse yang Anda gunakan saat ini?</label>
+                                    <input
+                                        {...register('mouse_brand')}
+                                        className={clsx(
+                                            "w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none",
+                                            errors.mouse_brand ? "border-red-500" : "border-gray-300"
+                                        )}
+                                        id="mouse_brand"
+                                        placeholder="cth. Logitech, Razer, dll."
+                                        type="text"
+                                    />
+                                    {errors.mouse_brand && <span className="text-xs text-red-500">{errors.mouse_brand.message}</span>}
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-3 md:col-span-2 pt-4">
+                                <label className="text-sm font-semibold text-[#111814]">
+                                    3. Menurut Anda, apa faktor terpenting dalam memilih perangkat kerja (mouse/keyboard) sebagai perangkat harian Anda?
+                                </label>
+                                <p className="text-xs text-gray-500 italic">Anda dapat memilih lebih dari 1 poin</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                                    {[
+                                        { value: 'Quality', label: 'Quality - dapat digunakan dalam jangka waktu lama' },
+                                        { value: 'Feature', label: 'Feature - mempermudah dan mempercepat alur kerja' },
+                                        { value: 'Ergonomic', label: 'Ergonomic Design - Nyaman digenggam/digunakan berjam-jam' },
+                                        { value: 'Price', label: 'Price - sebanding dengan fitur yang didapat' },
+                                        { value: 'Brand', label: 'Brand - memiliki reputasi brand yang baik' },
+                                        { value: 'Warranty', label: 'Official Warranty - memiliki layanan purna jual yang baik' },
+                                        { value: 'ECO', label: 'ECO Friendly - Terbuat dari bahan ramah lingkungan dan nol karbon' },
+                                        { value: 'Portable', label: 'Easy to go - mudah dibawa kemana-mana' },
+                                        { value: 'Others', label: 'Lainnya' },
+                                    ].map((factor) => (
+                                        <label key={factor.value} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all">
+                                            <input
+                                                type="checkbox"
+                                                value={factor.value}
+                                                {...register('work_device_factors')}
+                                                className="mt-1 size-4 accent-primary"
+                                            />
+                                            <span className="text-sm leading-tight text-gray-700">{factor.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                {errors.work_device_factors && <span className="text-xs text-red-500">{errors.work_device_factors.message}</span>}
+
+                                {selectedFactors.includes('Others') && (
+                                    <div className="mt-2 animate-[fadeIn_0.3s_ease-out]">
+                                        <input
+                                            {...register('work_device_factors_others')}
+                                            className={clsx(
+                                                "w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none",
+                                                errors.work_device_factors_others ? "border-red-500" : "border-gray-300"
+                                            )}
+                                            placeholder="Sebutkan faktor lainnya..."
+                                            type="text"
+                                        />
+                                        {errors.work_device_factors_others && <span className="text-xs text-red-500">{errors.work_device_factors_others.message}</span>}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </section>
                 )}

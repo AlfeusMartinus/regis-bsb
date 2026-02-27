@@ -158,7 +158,7 @@ export const RegistrantList: React.FC = () => {
     };
 
     const handleExportCSV = () => {
-        const headers = ['Date', 'Name', 'Email', 'Phone', 'Event', 'Amount', 'Status', 'Role', 'Institution', 'Message'];
+        const headers = ['Date', 'Name', 'Email', 'Phone', 'Event', 'Amount', 'Status', 'Role', 'Institution', 'External', 'Mouse Brand', 'Factors', 'Message'];
         const csvContent = [
             headers.join(','),
             ...filteredRegistrants.map(reg => {
@@ -172,6 +172,9 @@ export const RegistrantList: React.FC = () => {
                     reg.status,
                     `"${reg.current_status?.replace(/"/g, '""') || ''}"`,
                     `"${reg.institution?.replace(/"/g, '""') || ''}"`,
+                    reg.uses_external_peripherals ? 'YES' : 'NO',
+                    `"${reg.mouse_brand?.replace(/"/g, '""') || ''}"`,
+                    `"${(reg.work_device_factors?.join(', ') || '') + (reg.work_device_factors_others ? `: ${reg.work_device_factors_others}` : '')}"`,
                     `"${reg.prayer?.replace(/"/g, '""') || ''}"`
                 ];
                 return row.join(',');
@@ -262,13 +265,16 @@ export const RegistrantList: React.FC = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Role</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Institution</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">External</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Mouse Brand</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Factors</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Message</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {filteredRegistrants.length === 0 ? (
                             <tr>
-                                <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                                <td colSpan={13} className="px-6 py-8 text-center text-gray-500">
                                     No registrants found.
                                 </td>
                             </tr>
@@ -304,6 +310,16 @@ export const RegistrantList: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {reg.institution || '-'}
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {reg.uses_external_peripherals ? 'YES' : 'NO'}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {reg.mouse_brand || '-'}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={reg.work_device_factors?.join(', ') + (reg.work_device_factors_others ? `: ${reg.work_device_factors_others}` : '')}>
+                                        {reg.work_device_factors?.join(', ')}
+                                        {reg.work_device_factors_others && ` (${reg.work_device_factors_others})`}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={reg.prayer}>
                                         {reg.prayer || '-'}
                                     </td>
@@ -317,7 +333,7 @@ export const RegistrantList: React.FC = () => {
                             <td className="px-6 py-3 whitespace-nowrap">
                                 Rp {filteredRegistrants.reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0).toLocaleString()}
                             </td>
-                            <td colSpan={4}></td>
+                            <td colSpan={7}></td>
                         </tr>
                         <tr className="bg-green-50 text-green-900">
                             <td colSpan={5} className="px-6 py-3 text-right">Total Settle Amount:</td>
@@ -327,7 +343,7 @@ export const RegistrantList: React.FC = () => {
                                     .reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0)
                                     .toLocaleString()}
                             </td>
-                            <td colSpan={4}></td>
+                            <td colSpan={7}></td>
                         </tr>
                     </tfoot>
                 </table>

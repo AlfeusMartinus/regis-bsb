@@ -12,6 +12,12 @@ import { supabase } from '../../../lib/supabase';
 const registrationBaseSchema = personalBaseSchema.merge(donationSchema);
 type RegistrationFormData = z.infer<typeof registrationBaseSchema>;
 
+const formatCurrency = (value: string) => {
+    if (!value) return '';
+    const numberString = value.replace(/[^0-9]/g, '');
+    return numberString.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
 declare global {
     interface Window {
         loadJokulCheckout: (url: string) => void;
@@ -72,7 +78,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             }
 
             // 2. Donation refinements
-            if (data.amount && parseInt(data.amount) < minimumDonation) {
+            const rawAmount = data.amount.replace(/\./g, '');
+            if (rawAmount && parseInt(rawAmount) < minimumDonation) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: `Minimal donasi adalah Rp ${minimumDonation.toLocaleString('id-ID')}`,
@@ -133,7 +140,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
 
             const { data, error } = await supabase.functions.invoke('create-payment', {
                 body: {
-                    amount: parseInt(formData.amount),
+                    amount: parseInt(formData.amount.replace(/\./g, '')),
                     name: formData.fullName,
                     email: formData.email,
                     phone: formData.whatsapp,
@@ -351,7 +358,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                             )}
 
                             <div className="flex flex-col gap-2 md:col-span-2 pt-4 border-t border-gray-100">
-                                <label className="text-sm font-semibold text-[#111814]">1. Apakah Anda menggunakan mouse/keyboard eksternal?</label>
+                                <label className="text-sm font-semibold text-[#111814]">Apakah Anda menggunakan mouse/keyboard eksternal?</label>
                                 <div className="flex gap-4 mt-1">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
@@ -377,7 +384,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
 
                             {usesExternal === true && (
                                 <div className="flex flex-col gap-2 md:col-span-2 animate-[fadeIn_0.3s_ease-out]">
-                                    <label className="text-sm font-semibold text-[#111814]" htmlFor="mouse_brand">2. Apa merek mouse yang Anda gunakan saat ini?</label>
+                                    <label className="text-sm font-semibold text-[#111814]" htmlFor="mouse_brand">Apa merek mouse yang Anda gunakan saat ini?</label>
                                     <input
                                         {...register('mouse_brand')}
                                         className={clsx(
@@ -394,7 +401,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
 
                             <div className="flex flex-col gap-3 md:col-span-2 pt-4">
                                 <label className="text-sm font-semibold text-[#111814]">
-                                    3. Menurut Anda, apa faktor terpenting dalam memilih perangkat kerja (mouse/keyboard) sebagai perangkat harian Anda?
+                                    Menurut Anda, apa faktor terpenting dalam memilih perangkat kerja (mouse/keyboard) sebagai perangkat harian Anda?
                                 </label>
                                 <p className="text-xs text-gray-500 italic">Anda dapat memilih lebih dari 1 poin</p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
@@ -472,9 +479,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                         </em>
                                         <span className="block mt-1 font-semibold text-xs">(QS. Al-Baqarah: 271)</span>
                                     </p>
-                                    <p className="text-emerald-700 text-sm">
-                                        Ohiyaa untuk registrasinya kamu hanya cukup berdonasi tanpa minimal berapapun, seluruh donasi akan kami salurkan untuk yg membutuhkan. Sedekah dianjurkan di setiap waktu selagi kita memiliki kelapangan baik tenaga, pikiran, maupun harta.
-                                    </p>
                                 </div>
 
                                 <div className="flex flex-col gap-2">
@@ -485,13 +489,18 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Rp</span>
                                         <input
                                             {...register('amount')}
+                                            onChange={(e) => {
+                                                const formatted = formatCurrency(e.target.value);
+                                                setValue('amount', formatted, { shouldValidate: true });
+                                            }}
                                             className={clsx(
                                                 "w-full h-12 pl-10 pr-4 rounded-lg border bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none font-medium",
                                                 errors.amount ? "border-red-500" : "border-gray-300"
                                             )}
                                             id="amount"
                                             placeholder="Masukkan nominal donasi..."
-                                            type="number"
+                                            type="text"
+                                            inputMode="numeric"
                                             disabled={isLoading}
                                         />
                                     </div>

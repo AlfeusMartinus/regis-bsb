@@ -19,11 +19,17 @@ interface EventFormHelper {
     location: string;
     speakers: Speaker[];
     moderator: Speaker;
-    minimum_donation?: number;
+    minimum_donation?: string;
 }
 
+const formatCurrency = (value: string) => {
+    if (!value) return '';
+    const numberString = value.replace(/[^0-9]/g, '');
+    return numberString.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
 export const CreateEvent: React.FC = () => {
-    const { register, control, handleSubmit } = useForm<EventFormHelper>({
+    const { register, control, handleSubmit, setValue } = useForm<EventFormHelper>({
         defaultValues: {
             speakers: [{ name: '', title: '' }],
             moderator: { name: '', title: '' }
@@ -95,7 +101,7 @@ export const CreateEvent: React.FC = () => {
                 location: data.location,
                 speakers: speakersData,
                 moderator: moderatorData,
-                minimum_donation: data.minimum_donation ? Number(data.minimum_donation) : 1000,
+                minimum_donation: data.minimum_donation ? Number(data.minimum_donation.replace(/\./g, '')) : 1000,
                 is_published: true // Auto publish for now
             });
 
@@ -133,8 +139,21 @@ export const CreateEvent: React.FC = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Minimum Donation (IDR)</label>
-                        <input type="number" {...register('minimum_donation')} placeholder="1000" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2" />
-                        <p className="text-xs text-gray-500 mt-1">Default: 1000</p>
+                        <div className="relative mt-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">Rp</span>
+                            <input
+                                {...register('minimum_donation')}
+                                onChange={(e) => {
+                                    const formatted = formatCurrency(e.target.value);
+                                    setValue('minimum_donation', formatted);
+                                }}
+                                placeholder="1.000"
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2 pl-9"
+                                type="text"
+                                inputMode="numeric"
+                            />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Default: 1.000</p>
                     </div>
                 </div>
 

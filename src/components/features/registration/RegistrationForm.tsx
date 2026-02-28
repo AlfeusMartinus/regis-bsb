@@ -228,11 +228,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
     React.useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const paymentParam = params.get('payment');
+        const isInitiatingPayment = sessionStorage.getItem('is_initiating_payment');
+
+        if (!paymentParam) return;
+
+        // Prevent direct access to success/cancel pages without actual payment flow
+        if (!isInitiatingPayment) {
+            window.history.replaceState({}, '', window.location.pathname);
+            return;
+        }
 
         if (paymentParam === 'success' || paymentParam === 'result') {
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
+        } else if (paymentParam === 'cancel' || paymentParam === 'failed') {
 
             // Trigger email sending
             const pendingDataString = sessionStorage.getItem('pending_registration_data');
@@ -256,7 +266,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
             setCurrentStep(2);
-        } else if (paymentParam) {
+        } else {
             window.history.replaceState({}, '', window.location.pathname);
         }
     }, []);

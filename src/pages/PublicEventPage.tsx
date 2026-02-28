@@ -57,11 +57,12 @@ export const PublicEventPage: React.FC = () => {
 
     return (
         <MainLayout sidebar={<EventSidebar event={event} />}>
-            <RegistrationForm 
-                eventId={event.id} 
-                eventName={event.title} 
-                eventSlug={event.slug} 
+            <RegistrationForm
+                eventId={event.id}
+                eventName={event.title}
+                eventSlug={event.slug}
                 minimumDonation={event.minimum_donation}
+                event={event}
             />
         </MainLayout>
     );

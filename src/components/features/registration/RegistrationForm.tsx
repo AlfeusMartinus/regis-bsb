@@ -242,7 +242,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
-
             // Trigger email sending
             const pendingDataString = sessionStorage.getItem('pending_registration_data');
             if (pendingDataString) {

@@ -111,8 +111,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 'domicile',
                 'gender',
                 'status',
+                'university',
                 'major',
                 'institution',
+                'role',
                 'uses_external_peripherals',
                 'mouse_brand',
                 'work_device_factors',
@@ -151,7 +153,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     eventSlug: eventSlug,
                     gender: formData.gender,
                     currentStatus: formData.status,
-                    institution: formData.status === 'student' ? formData.major : formData.institution,
+                    university: formData.status === 'student' ? formData.university : null,
+                    major: formData.status === 'student' ? formData.major : null,
+                    institution: formData.status === 'professional' ? formData.institution : null,
+                    role: formData.status === 'professional' ? formData.role : null,
                     uses_external_peripherals: formData.uses_external_peripherals,
                     mouse_brand: formData.mouse_brand,
                     work_device_factors: formData.work_device_factors,
@@ -351,38 +356,66 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                         <span className="material-symbols-outlined text-sm">info</span>
                                         <span>
                                             {status === 'student'
-                                                ? 'Silakan isi Jurusan Anda.'
-                                                : 'Silakan isi Instansi/Perusahaan Anda.'}
+                                                ? 'Silakan isi Universitas dan Jurusan Anda.'
+                                                : 'Silakan isi Instansi/Perusahaan dan Jabatan Anda.'}
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         {status === 'student' && (
-                                            <div className="flex flex-col gap-1 w-full">
-                                                <input
-                                                    {...register('major')}
-                                                    className={clsx(
-                                                        "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
-                                                        errors.major ? "border-red-500" : "border-gray-300"
-                                                    )}
-                                                    placeholder="Jurusan"
-                                                    type="text"
-                                                />
-                                                {errors.major && <span className="text-xs text-red-500">{errors.major.message}</span>}
-                                            </div>
+                                            <>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <input
+                                                        {...register('university')}
+                                                        className={clsx(
+                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
+                                                            errors.university ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                        placeholder="Universitas / Perguruan Tinggi"
+                                                        type="text"
+                                                    />
+                                                    {errors.university && <span className="text-xs text-red-500">{errors.university.message}</span>}
+                                                </div>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <input
+                                                        {...register('major')}
+                                                        className={clsx(
+                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
+                                                            errors.major ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                        placeholder="Jurusan"
+                                                        type="text"
+                                                    />
+                                                    {errors.major && <span className="text-xs text-red-500">{errors.major.message}</span>}
+                                                </div>
+                                            </>
                                         )}
                                         {status === 'professional' && (
-                                            <div className="flex flex-col gap-1 w-full">
-                                                <input
-                                                    {...register('institution')}
-                                                    className={clsx(
-                                                        "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
-                                                        errors.institution ? "border-red-500" : "border-gray-300"
-                                                    )}
-                                                    placeholder="Instansi / Perusahaan"
-                                                    type="text"
-                                                />
-                                                {errors.institution && <span className="text-xs text-red-500">{errors.institution.message}</span>}
-                                            </div>
+                                            <>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <input
+                                                        {...register('institution')}
+                                                        className={clsx(
+                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
+                                                            errors.institution ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                        placeholder="Instansi / Perusahaan"
+                                                        type="text"
+                                                    />
+                                                    {errors.institution && <span className="text-xs text-red-500">{errors.institution.message}</span>}
+                                                </div>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <input
+                                                        {...register('role')}
+                                                        className={clsx(
+                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
+                                                            errors.role ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                        placeholder="Jabatan / Role"
+                                                        type="text"
+                                                    />
+                                                    {errors.role && <span className="text-xs text-red-500">{errors.role.message}</span>}
+                                                </div>
+                                            </>
                                         )}
                                     </div>
                                 </div>

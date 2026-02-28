@@ -29,9 +29,10 @@ interface RegistrationFormProps {
     eventName?: string;
     eventSlug?: string;
     minimumDonation?: number;
+    event?: any;
 }
 
-export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug, minimumDonation = 1000 }) => {
+export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug, minimumDonation = 1000, event }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
@@ -162,6 +163,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             if (error) {
                 console.error("Payment Function Error:", error);
                 alert("Gagal membuat pembayaran: " + error.message);
+                setIsLoading(false);
                 return;
             }
 
@@ -170,8 +172,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 sessionStorage.setItem('pending_registration_data', JSON.stringify({
                     email: formData.email,
                     name: formData.fullName,
-                    eventName: eventName,
-                    ticketId: `TKT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`
+                    eventId: eventId,
+                    eventName: eventName || "Acara",
+                    ticketId: `TKT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`,
+                    date_time: event?.date_time,
+                    location: event?.location,
+                    location_detail: event?.location_detail,
+                    location_link: event?.location_link
                 }));
 
                 if (window.loadJokulCheckout) {
@@ -181,12 +188,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 }
             } else {
                 alert("Gagal mendapatkan link pembayaran.");
+                setIsLoading(false);
             }
 
         } catch (err) {
             console.error("Unexpected Error:", err);
             alert("Terjadi kesalahan sistem.");
-        } finally {
             setIsLoading(false);
         }
     };

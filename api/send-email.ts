@@ -7,7 +7,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ message: 'Method Not Allowed' });
     }
 
-    const { email, name, eventName, ticketId } = req.body;
+    const { email, name, eventName, eventId, ticketId, date_time, location, location_detail, location_link } = req.body;
 
     if (!email || !name) {
         return res.status(400).json({ message: 'Email and name are required' });
@@ -27,18 +27,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
         });
 
-        const qrCodeDataUrl = await QRCode.toDataURL(finalTicketId, {
+        // Date and Time Formatting
+        const eventDateObj = date_time ? new Date(date_time) : new Date();
+        const endDateObj = new Date(eventDateObj.getTime() + 2 * 60 * 60 * 1000); // add 2 hours
+        const dateStr = eventDateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const timeStr = eventDateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
+
+        // Generate ICS contents
+        const formatDateForIcs = (date: Date) => {
+            return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        };
+
+        const icsContent = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Belajar Sambil Beramal//Registration//ID',
+            'CALSCALE:GREGORIAN',
+            'METHOD:REQUEST',
+            'BEGIN:VEVENT',
+            `DTSTART:${formatDateForIcs(eventDateObj)}`,
+            `DTEND:${formatDateForIcs(endDateObj)}`,
+            `DTSTAMP:${formatDateForIcs(new Date())}`,
+            `UID:${finalTicketId}@belajarsambilberamal.com`,
+            `SUMMARY:${eventName || 'Acara'}`,
+            `LOCATION:${location || ''}${location_detail ? ' - ' + location_detail : ''}`,
+            `DESCRIPTION:Tiket ID: ${finalTicketId}\\nTerima kasih telah mendaftar acara ${eventName || 'Acara'}.`,
+            'STATUS:CONFIRMED',
+            'SEQUENCE:0',
+            'END:VEVENT',
+            'END:VCALENDAR'
+        ].join('\r\n');
+
+        // Encode payload: checkin:eventId:email
+        const checkinPayload = eventId ? `checkin:${eventId}:${email}` : finalTicketId;
+
+        // Generate QR Code as a Buffer
+        const qrCodeBuffer = await QRCode.toBuffer(checkinPayload, {
             errorCorrectionLevel: 'H',
             margin: 1,
             color: {
-                dark: '#1a2c22', // Match the main theme color
+                dark: '#1a2c22',
                 light: '#ffffff'
             }
         });
 
+        // Unique CID formatted like an email address (Required for Mobile Gmail to reliably show inline CIDs)
+        const qrCid = `qrcode-${Date.now()}@bsb.ticket`;
+
         // Set up email options with the HTML layout
+        // Using explicit display name with matching SMTP_USER to avoid 553 error
+        const fromAddress = `"Registrasi Event BSB" <${process.env.SMTP_USER}>`;
+        console.log('Attempting to send email from:', fromAddress);
+
         const mailOptions = {
-            from: process.env.SMTP_FROM || `"Event Registration" <${process.env.SMTP_USER}>`,
+            from: fromAddress,
             to: email,
             subject: `Tiket Registrasi: ${eventName || 'Acara'}`,
             html: `
@@ -51,13 +93,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         Halo <strong>${name}</strong>,<br/>
                         Terima kasih telah mendaftar untuk acara <strong>${eventName || 'Acara'}</strong>. Pembayaran dan registrasi Anda telah kami terima dengan sukses.
                     </p>
+
+                    <div style="background-color: #f8fafc; border-left: 4px solid #1a2c22; padding: 16px; margin: 20px 0; text-align: left;">
+                        <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>📅 Tanggal:</strong> ${dateStr}</p>
+                        <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>⏰ Waktu:</strong> ${timeStr}</p>
+                        <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>📍 Lokasi:</strong> ${location || 'Online'}</p>
+                        ${location_detail ? `<p style="margin: 0 0 8px 0; color: #64748b; font-size: 14px;">${location_detail}</p>` : ''}
+                        ${location_link ? `<p style="margin: 0;"><a href="${location_link}" style="color: #2563eb; text-decoration: none;">Buka di Google Maps &rarr;</a></p>` : ''}
+                    </div>
                     
                     <div style="background-color: #f3f4f6; border-radius: 12px; padding: 24px; text-align: center; margin: 30px 0;">
                         <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: bold; color: #1f2937;">
                             Bukti Tiket Anda (ID: ${finalTicketId})
                         </p>
                         <div style="display: inline-block; padding: 10px; background: white; border-radius: 8px;">
-                            <img src="${qrCodeDataUrl}" alt="QR Code Ticket" style="width: 200px; height: 200px; display: block;" />
+                            <img src="cid:${qrCid}" alt="QR Code Ticket" width="200" height="200" style="display: block; width: 100%; max-width: 200px; height: auto;" />
                         </div>
                         <p style="margin: 16px 0 0 0; font-size: 13px; color: #6b7280; line-height: 1.5;">
                             Silakan tunjukkan QR code ini di meja registrasi saat menghadiri acara.
@@ -75,6 +125,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     </div>
                 </div>
             `,
+            attachments: [
+                {
+                    filename: 'qrcode.png',
+                    content: qrCodeBuffer,
+                    cid: qrCid,
+                    contentType: 'image/png',
+                    contentDisposition: 'inline' as const
+                },
+                {
+                    filename: 'invite.ics',
+                    content: Buffer.from(icsContent),
+                    contentType: 'text/calendar'
+                }
+            ]
         };
 
         const info = await transporter.sendMail(mailOptions);

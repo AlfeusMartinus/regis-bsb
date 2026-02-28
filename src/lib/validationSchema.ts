@@ -11,8 +11,10 @@ export const personalBaseSchema = z.object({
     status: z.enum(['student', 'professional'], {
         message: "Pilih status Anda"
     }),
+    university: z.string().optional(),
     major: z.string().optional(),
     institution: z.string().optional(),
+    role: z.string().optional(),
     uses_external_peripherals: z.boolean({ message: "Pilihan wajib diisi" }),
     mouse_brand: z.string().optional(),
     work_device_factors: z.array(z.string()).min(1, { message: "Pilih minimal 1 faktor" }),
@@ -20,19 +22,37 @@ export const personalBaseSchema = z.object({
 });
 
 export const personalSchema = personalBaseSchema.superRefine((data, ctx) => {
-    if (data.status === 'student' && !data.major) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Jurusan wajib diisi untuk Mahasiswa",
-            path: ['major'],
-        });
+    if (data.status === 'student') {
+        if (!data.university) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Universitas/Perguruan Tinggi wajib diisi",
+                path: ['university'],
+            });
+        }
+        if (!data.major) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Jurusan wajib diisi",
+                path: ['major'],
+            });
+        }
     }
-    if (data.status === 'professional' && !data.institution) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Instansi/Perusahaan wajib diisi untuk Profesional",
-            path: ['institution'],
-        });
+    if (data.status === 'professional') {
+        if (!data.institution) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Instansi/Perusahaan wajib diisi",
+                path: ['institution'],
+            });
+        }
+        if (!data.role) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Jabatan/Role wajib diisi",
+                path: ['role'],
+            });
+        }
     }
     if (data.uses_external_peripherals === true && !data.mouse_brand) {
         ctx.addIssue({

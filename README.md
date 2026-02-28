@@ -1,73 +1,108 @@
-# React + TypeScript + Vite
+<div align="center">
+  <h1 align="center">Event Registration System (BSB)</h1>
+  <p align="center">
+    A modern, fully-featured event registration and donation platform built for the <strong>#BelajarSambilBeramal</strong> initiative.
+    <br />
+    <br />
+  </p>
+</div>
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Features
 
-## React Compiler
+- **Modern & Responsive UI**: Beautiful interfaces built with React and Tailwind CSS.
+- **Dynamic Form Validation**: Robust schema-based validation utilizing `react-hook-form` and `zod`.
+- **Payment Gateway Integration**: Seamless processing using Doku/Jokul connection.
+- **Real-time Synchronization**: Admin dashboard reflects new registrants and transactions instantly via Supabase Reatime.
+- **Role-based Authentication**: Secure admin and visitor boundaries.
+- **Automated Workflows**: Intelligent edge-functions to process payment webhooks and handle serverless logic.
+- **Data Export**: Export verified registrant lists and donation trackers straight to `.csv`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Technology Stack
 
-## Expanding the ESLint configuration
+- **Frontend Core**: React 18, TypeScript, Vite, React Router DOM
+- **Styling**: Tailwind CSS, Lucide React (Icons), clsx, Tailwind Merge
+- **Form Handling**: React Hook Form, Zod (Schema Validation)
+- **Backend / Database**: Supabase (PostgreSQL, Edge Functions, Realtime, Auth)
+- **Payment Processing**: DOKU Jokul Checkout
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## ⚙️ Getting Started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Follow these steps to setup the project locally.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Prerequisites
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- [Node.js](https://nodejs.org/) (v16.x or newer)
+- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+- A [Supabase](https://supabase.com/) account and project.
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/AlfeusMartinus/regis-bsb.git
+   cd regis-bsb
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+   Create a `.env` file in the root directory and add the following keys. Ask your team lead for the specific values.
+   ```env
+   VITE_SUPABASE_URL
+   VITE_SUPABASE_ANON_KEY
+   VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+   ```
+   *Note: If you plan to test the Supabase Edge Functions locally, duplicate this to a `.env.local` inside the `supabase/` folder containing the necessary keys (like your Payment Gateway Sandbox keys and Supabase Service Role Key).*
+
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
+
+## 🗄️ Database Setup
+
+The project requires several tables (e.g., `events`, `registrations`, etc.). 
+The schema mapping can be found in `supabase/schema.sql`.
+
+To apply it manually, go to the **SQL Editor** in your Supabase dashboard and run the entire SQL script provided.
+
+## 🚀 Deployment
+
+### Frontend Delivery
+The React application can be easily distributed via Vercel, Netlify, or Cloudflare Pages. 
+Build the application utilizing Vite:
+```bash
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Edge Functions Deployment
+For payment operations, deploy the serverless functions to Supabase via Supabase CLI. Make sure the Doker daemon is running if required by the CLI interface.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# Login to Supabase CLI if you haven't
+npx supabase login
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Deploy a specific function (e.g., create-payment)
+npx supabase functions deploy create-payment --no-verify-jwt
 ```
+
+## 📜 License
+
+This project is intended for internal or specified organizational use. 
+
+---
+<div align="center">
+  <i>Developed with ❤️ for #BelajarSambilBeramal.</i>
+</div>

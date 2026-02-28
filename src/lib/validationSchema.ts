@@ -5,8 +5,11 @@ export const personalBaseSchema = z.object({
     email: z.string().email({ message: "Format email tidak valid" }),
     whatsapp: z.string().min(10, { message: "Nomor WhatsApp minimal 10 digit" }).regex(/^\d+$/, { message: "Hanya boleh angka" }),
     domicile: z.string().min(1, { message: "Domisili wajib diisi" }),
-    status: z.enum(['student', 'professional'], { 
-        message: "Pilih status Anda" 
+    gender: z.enum(['Laki-laki', 'Perempuan'], {
+        message: "Jenis kelamin wajib dipilih"
+    }),
+    status: z.enum(['student', 'professional'], {
+        message: "Pilih status Anda"
     }),
     major: z.string().optional(),
     institution: z.string().optional(),

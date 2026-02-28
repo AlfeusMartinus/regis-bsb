@@ -109,6 +109,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 'email',
                 'whatsapp',
                 'domicile',
+                'gender',
                 'status',
                 'major',
                 'institution',
@@ -148,6 +149,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     eventId: eventId,
                     eventName: eventName,
                     eventSlug: eventSlug,
+                    gender: formData.gender,
                     currentStatus: formData.status,
                     institution: formData.status === 'student' ? formData.major : formData.institution,
                     uses_external_peripherals: formData.uses_external_peripherals,
@@ -295,6 +297,32 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                 />
                                 {errors.domicile && <span className="text-xs text-red-500">{errors.domicile.message}</span>}
                             </div>
+
+                            <div className="flex flex-col gap-2 md:col-span-2 pt-2">
+                                <label className="text-sm font-semibold text-[#111814]">Jenis Kelamin</label>
+                                <div className="flex gap-6 mt-1">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            value="Laki-laki"
+                                            {...register('gender')}
+                                            className="size-4 accent-primary"
+                                        />
+                                        <span className="text-sm text-gray-700">Laki-laki</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            value="Perempuan"
+                                            {...register('gender')}
+                                            className="size-4 accent-primary"
+                                        />
+                                        <span className="text-sm text-gray-700">Perempuan</span>
+                                    </label>
+                                </div>
+                                {errors.gender && <span className="text-xs text-red-500">{errors.gender.message}</span>}
+                            </div>
+
                             <div className="flex flex-col gap-2 md:col-span-2">
                                 <label className="text-sm font-semibold text-[#111814]" htmlFor="status">Status Saat Ini</label>
                                 <div className="relative">

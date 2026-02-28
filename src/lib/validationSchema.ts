@@ -11,28 +11,50 @@ export const personalBaseSchema = z.object({
     status: z.enum(['student', 'professional'], {
         message: "Pilih status Anda"
     }),
+    university: z.string().optional(),
     major: z.string().optional(),
     institution: z.string().optional(),
+    role: z.string().optional(),
     uses_external_peripherals: z.boolean({ message: "Pilihan wajib diisi" }),
     mouse_brand: z.string().optional(),
     work_device_factors: z.array(z.string()).min(1, { message: "Pilih minimal 1 faktor" }),
     work_device_factors_others: z.string().optional(),
+    info_source: z.string().min(1, { message: "Pilih salah satu sumber informasi" }),
+    info_source_others: z.string().optional(),
 });
 
 export const personalSchema = personalBaseSchema.superRefine((data, ctx) => {
-    if (data.status === 'student' && !data.major) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Jurusan wajib diisi untuk Mahasiswa",
-            path: ['major'],
-        });
+    if (data.status === 'student') {
+        if (!data.university) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Universitas/Perguruan Tinggi wajib diisi",
+                path: ['university'],
+            });
+        }
+        if (!data.major) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Jurusan wajib diisi",
+                path: ['major'],
+            });
+        }
     }
-    if (data.status === 'professional' && !data.institution) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Instansi/Perusahaan wajib diisi untuk Profesional",
-            path: ['institution'],
-        });
+    if (data.status === 'professional') {
+        if (!data.institution) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Instansi/Perusahaan wajib diisi",
+                path: ['institution'],
+            });
+        }
+        if (!data.role) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Jabatan/Role wajib diisi",
+                path: ['role'],
+            });
+        }
     }
     if (data.uses_external_peripherals === true && !data.mouse_brand) {
         ctx.addIssue({
@@ -46,6 +68,13 @@ export const personalSchema = personalBaseSchema.superRefine((data, ctx) => {
             code: z.ZodIssueCode.custom,
             message: "Sebutkan faktor lainnya",
             path: ['work_device_factors_others'],
+        });
+    }
+    if (data.info_source === 'Others' && !data.info_source_others) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Sebutkan darimana Anda mengetahui event ini",
+            path: ['info_source_others'],
         });
     }
 });

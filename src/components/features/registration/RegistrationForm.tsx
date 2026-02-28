@@ -101,6 +101,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
     const status = watch('status');
     const usesExternal = watch('uses_external_peripherals');
     const selectedFactors = watch('work_device_factors') || [];
+    const infoSource = watch('info_source');
 
     const handleNext = async () => {
         let isValid = false;
@@ -112,12 +113,16 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 'domicile',
                 'gender',
                 'status',
+                'university',
                 'major',
                 'institution',
+                'role',
                 'uses_external_peripherals',
                 'mouse_brand',
                 'work_device_factors',
-                'work_device_factors_others'
+                'work_device_factors_others',
+                'info_source',
+                'info_source_others'
             ]);
         }
 
@@ -146,17 +151,23 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     name: formData.fullName,
                     email: formData.email,
                     phone: formData.whatsapp,
+                    domicile: formData.domicile,
                     prayer: formData.prayer,
                     eventId: eventId,
                     eventName: eventName,
                     eventSlug: eventSlug,
                     gender: formData.gender,
                     currentStatus: formData.status,
-                    institution: formData.status === 'student' ? formData.major : formData.institution,
+                    university: formData.status === 'student' ? formData.university : null,
+                    major: formData.status === 'student' ? formData.major : null,
+                    institution: formData.status === 'professional' ? formData.institution : null,
+                    role: formData.status === 'professional' ? formData.role : null,
                     uses_external_peripherals: formData.uses_external_peripherals,
                     mouse_brand: formData.mouse_brand,
                     work_device_factors: formData.work_device_factors,
-                    work_device_factors_others: formData.work_device_factors_others
+                    work_device_factors_others: formData.work_device_factors_others,
+                    info_source: formData.info_source,
+                    info_source_others: formData.info_source_others
                 }
             });
 
@@ -382,38 +393,66 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                         <span className="material-symbols-outlined text-sm">info</span>
                                         <span>
                                             {status === 'student'
-                                                ? 'Silakan isi Jurusan Anda.'
-                                                : 'Silakan isi Instansi/Perusahaan Anda.'}
+                                                ? 'Silakan isi Universitas dan Jurusan Anda.'
+                                                : 'Silakan isi Instansi/Perusahaan dan Jabatan Anda.'}
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         {status === 'student' && (
-                                            <div className="flex flex-col gap-1 w-full">
-                                                <input
-                                                    {...register('major')}
-                                                    className={clsx(
-                                                        "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
-                                                        errors.major ? "border-red-500" : "border-gray-300"
-                                                    )}
-                                                    placeholder="Jurusan"
-                                                    type="text"
-                                                />
-                                                {errors.major && <span className="text-xs text-red-500">{errors.major.message}</span>}
-                                            </div>
+                                            <>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <input
+                                                        {...register('university')}
+                                                        className={clsx(
+                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
+                                                            errors.university ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                        placeholder="Universitas / Perguruan Tinggi"
+                                                        type="text"
+                                                    />
+                                                    {errors.university && <span className="text-xs text-red-500">{errors.university.message}</span>}
+                                                </div>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <input
+                                                        {...register('major')}
+                                                        className={clsx(
+                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
+                                                            errors.major ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                        placeholder="Jurusan"
+                                                        type="text"
+                                                    />
+                                                    {errors.major && <span className="text-xs text-red-500">{errors.major.message}</span>}
+                                                </div>
+                                            </>
                                         )}
                                         {status === 'professional' && (
-                                            <div className="flex flex-col gap-1 w-full">
-                                                <input
-                                                    {...register('institution')}
-                                                    className={clsx(
-                                                        "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
-                                                        errors.institution ? "border-red-500" : "border-gray-300"
-                                                    )}
-                                                    placeholder="Instansi / Perusahaan"
-                                                    type="text"
-                                                />
-                                                {errors.institution && <span className="text-xs text-red-500">{errors.institution.message}</span>}
-                                            </div>
+                                            <>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <input
+                                                        {...register('institution')}
+                                                        className={clsx(
+                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
+                                                            errors.institution ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                        placeholder="Instansi / Perusahaan"
+                                                        type="text"
+                                                    />
+                                                    {errors.institution && <span className="text-xs text-red-500">{errors.institution.message}</span>}
+                                                </div>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <input
+                                                        {...register('role')}
+                                                        className={clsx(
+                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
+                                                            errors.role ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                        placeholder="Jabatan / Role"
+                                                        type="text"
+                                                    />
+                                                    {errors.role && <span className="text-xs text-red-500">{errors.role.message}</span>}
+                                                </div>
+                                            </>
                                         )}
                                     </div>
                                 </div>
@@ -505,6 +544,52 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                         {errors.work_device_factors_others && <span className="text-xs text-red-500">{errors.work_device_factors_others.message}</span>}
                                     </div>
                                 )}
+                            </div>
+
+                            <div className="flex flex-col gap-3 md:col-span-2 pt-4">
+                                <label className="text-sm font-semibold text-[#111814]">
+                                    Darimana anda mengetahui event ini? <span className="text-red-500">*</span>
+                                </label>
+                                <div className="flex flex-col gap-3 mt-1">
+                                    {[
+                                        'Social Media - Binary Nusantara',
+                                        'Sosial Media - GDG Bandung',
+                                        'Whatsapp Group',
+                                        'Teman',
+                                        'Telegram',
+                                        'Facebook',
+                                        'X',
+                                        'Email',
+                                        'Others'
+                                    ].map((source) => (
+                                        <label key={source} className="flex items-center gap-3 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                value={source}
+                                                {...register('info_source')}
+                                                className="size-4 accent-primary"
+                                            />
+                                            {source === 'Others' ? (
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <span className="text-sm text-gray-700 whitespace-nowrap">Yang lain:</span>
+                                                    <input
+                                                        type="text"
+                                                        {...register('info_source_others')}
+                                                        disabled={infoSource !== 'Others'}
+                                                        className={clsx(
+                                                            "flex-1 h-8 border-b transition-all focus:outline-none focus:border-primary disabled:bg-transparent disabled:opacity-50",
+                                                            errors.info_source_others ? "border-red-500" : "border-gray-300"
+                                                        )}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm text-gray-700">{source}</span>
+                                            )}
+                                        </label>
+                                    ))}
+                                </div>
+                                {errors.info_source && <span className="text-xs text-red-500">{errors.info_source.message}</span>}
+                                {errors.info_source_others && infoSource === 'Others' && <span className="text-xs text-red-500">{errors.info_source_others.message}</span>}
                             </div>
                         </div>
                     </section>

@@ -523,6 +523,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                     {[
                                         'Social Media - Binary Nusantara',
                                         'Sosial Media - GDG Bandung',
+                                        'Social Media - MXperience',
                                         'Whatsapp Group',
                                         'Teman',
                                         'Telegram',

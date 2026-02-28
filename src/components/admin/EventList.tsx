@@ -59,10 +59,18 @@ export const EventList: React.FC = () => {
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
 
+    const totalEvents = events.length;
+    const publishedEvents = events.filter((event) => event.is_published).length;
+    const draftEvents = totalEvents - publishedEvents;
+    const totalRegistrants = events.reduce((sum, event) => sum + (event.registrant_count || 0), 0);
+
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Your Events</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Events</h2>
+                    <p className="text-sm text-gray-500 mt-1">Kelola jadwal event dan pantau jumlah registrasi per event.</p>
+                </div>
                 <Link
                     to="/admin/events/create"
                     className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors"
@@ -72,7 +80,26 @@ export const EventList: React.FC = () => {
                 </Link>
             </div>
 
-            <div className="bg-white shadow rounded-lg overflow-x-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+                <div className="border border-gray-200 rounded-lg px-4 py-3 bg-white">
+                    <p className="text-xs text-gray-500">Total Event</p>
+                    <p className="text-xl font-bold text-gray-900">{totalEvents}</p>
+                </div>
+                <div className="border border-gray-200 rounded-lg px-4 py-3 bg-white">
+                    <p className="text-xs text-gray-500">Published</p>
+                    <p className="text-xl font-bold text-emerald-700">{publishedEvents}</p>
+                </div>
+                <div className="border border-gray-200 rounded-lg px-4 py-3 bg-white">
+                    <p className="text-xs text-gray-500">Draft</p>
+                    <p className="text-xl font-bold text-amber-700">{draftEvents}</p>
+                </div>
+                <div className="border border-gray-200 rounded-lg px-4 py-3 bg-white">
+                    <p className="text-xs text-gray-500">Total Registrants</p>
+                    <p className="text-xl font-bold text-blue-700">{totalRegistrants}</p>
+                </div>
+            </div>
+
+            <div className="border border-gray-200 rounded-lg overflow-x-auto bg-white">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -106,7 +133,7 @@ export const EventList: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <Link
-                                            to={`/admin/dashboard?tab=registrants&eventId=${event.id}`}
+                                            to={`/admin/dashboard?tab=transactions&eventId=${event.id}`}
                                             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer"
                                             title="View Registrants"
                                         >

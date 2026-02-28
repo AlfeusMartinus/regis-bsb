@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '../../lib/supabase';
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Camera, Upload, StopCircle } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 type ScanResult = {
     status: 'success' | 'error' | 'idle';
@@ -10,109 +11,461 @@ type ScanResult = {
 };
 
 export const Scanner: React.FC = () => {
+    const readerId = 'scanner-reader';
     const [scanResult, setScanResult] = useState<ScanResult>({ status: 'idle', message: 'Tunggu scan...' });
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isUploadProcessing, setIsUploadProcessing] = useState(false);
+    const [events, setEvents] = useState<any[]>([]);
+    const [selectedEventId, setSelectedEventId] = useState<string>('');
+    const [cameraList, setCameraList] = useState<Array<{ id: string; label: string }>>([]);
+    const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+    const [isCameraRunning, setIsCameraRunning] = useState(false);
+    const [loadingEvents, setLoadingEvents] = useState(true);
+    const [scannerReady, setScannerReady] = useState(false);
 
-    // Prevent double scanning the same QR too fast
+    const scannerRef = useRef<Html5Qrcode | null>(null);
+    const isProcessingRef = useRef(false);
     const lastScannedRef = useRef<string | null>(null);
     const timeoutRef = useRef<number | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [searchParams] = useSearchParams();
 
-    useEffect(() => {
-        const scanner = new Html5QrcodeScanner(
-            "reader",
-            { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true },
-            false
-        );
+    const successStatuses = useMemo(() => ['paid', 'settlement', 'success'], []);
 
-        const onScanSuccess = async (decodedText: string) => {
-            if (isProcessing) return;
+    const selectedEvent = useMemo(
+        () => events.find((event) => event.id === selectedEventId) || null,
+        [events, selectedEventId]
+    );
 
-            // Prevent immediate double scans
-            if (decodedText === lastScannedRef.current) return;
-            lastScannedRef.current = decodedText;
+    const selectedEventRegistrations = useMemo(() => {
+        if (!selectedEvent) return [];
+        return Array.isArray(selectedEvent.registrations) ? selectedEvent.registrations : [];
+    }, [selectedEvent]);
 
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            timeoutRef.current = setTimeout(() => {
-                lastScannedRef.current = null;
-            }, 3000);
+    const paidCount = useMemo(() => {
+        return selectedEventRegistrations.filter((r: any) => successStatuses.includes(r.status?.toLowerCase())).length;
+    }, [selectedEventRegistrations, successStatuses]);
 
-            setIsProcessing(true);
+    const checkedInCount = useMemo(() => {
+        return selectedEventRegistrations.filter((r: any) => successStatuses.includes(r.status?.toLowerCase()) && r.is_attended).length;
+    }, [selectedEventRegistrations, successStatuses]);
 
+    const notCheckedInCount = Math.max(0, paidCount - checkedInCount);
+
+    const fetchEvents = async () => {
+        setLoadingEvents(true);
+
+        const { data, error } = await supabase
+            .from('events')
+            .select(`
+                id,
+                title,
+                date_time,
+                registrations (
+                    id,
+                    status,
+                    is_attended
+                )
+            `)
+            .order('date_time', { ascending: true });
+
+        if (error) {
+            console.error('Failed to fetch events:', error);
+            setEvents([]);
+            setLoadingEvents(false);
+            return;
+        }
+
+        setEvents(data || []);
+
+        const requestedEventId = searchParams.get('eventId');
+        const hasRequestedEvent = !!requestedEventId && (data || []).some((event) => event.id === requestedEventId);
+
+        if (!selectedEventId) {
+            if (hasRequestedEvent && requestedEventId) {
+                setSelectedEventId(requestedEventId);
+            } else if (data?.[0]?.id) {
+                setSelectedEventId(data[0].id);
+            }
+        }
+        setLoadingEvents(false);
+    };
+
+    const tryDecode = (value: string) => {
+        try {
+            return decodeURIComponent(value);
+        } catch {
+            return value;
+        }
+    };
+
+    const parseQrPayload = (decodedText: string) => {
+        const payload = decodedText.trim();
+
+        // Format URL support, e.g. https://.../checkin?eventId=...&email=...
+        if (payload.startsWith('http://') || payload.startsWith('https://')) {
             try {
-                // Expected format: checkin:{eventId}:{email}
-                if (!decodedText.startsWith('checkin:')) {
-                    throw new Error('QR Code tidak valid atau bukan QR event kami.');
+                const url = new URL(payload);
+                const eventId = url.searchParams.get('eventId') || url.searchParams.get('event_id') || '';
+                const email = url.searchParams.get('email') || '';
+                const ticketId = url.searchParams.get('ticketId') || url.searchParams.get('ticket_id') || '';
+
+                if (eventId && (email || ticketId)) {
+                    return {
+                        type: 'checkin' as const,
+                        eventId,
+                        identifier: tryDecode((email || ticketId).trim()),
+                    };
                 }
+            } catch {
+                // fallback to other parser branches
+            }
+        }
 
-                const parts = decodedText.split(':');
-                if (parts.length !== 3) {
-                    throw new Error('Format QR Code rusak.');
+        // JSON payload support
+        if (payload.startsWith('{') && payload.endsWith('}')) {
+            try {
+                const json = JSON.parse(payload);
+                const eventId = json.eventId || json.event_id || '';
+                const identifier = json.email || json.ticketId || json.ticket_id || '';
+                if (eventId && identifier) {
+                    return {
+                        type: 'checkin' as const,
+                        eventId: String(eventId),
+                        identifier: tryDecode(String(identifier).trim()),
+                    };
                 }
+            } catch {
+                // fallback to other parser branches
+            }
+        }
 
-                const [_, eventId, email] = parts;
-                console.log("Processing checkin for:", eventId, email);
+        if (payload.startsWith('checkin:')) {
+            const parts = payload.split(':');
+            if (parts.length < 3) {
+                throw new Error('Format QR Code rusak.');
+            }
 
-                // Query the database
-                const { data: reg, error } = await supabase
+            const eventId = parts[1];
+            const rawIdentifier = parts.slice(2).join(':');
+            const identifier = tryDecode(rawIdentifier).trim();
+
+            return {
+                type: 'checkin' as const,
+                eventId,
+                identifier,
+            };
+        }
+
+        return {
+            type: 'legacy' as const,
+            raw: payload,
+        };
+    };
+
+    const extractEmailFromText = (value: string) => {
+        const match = value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+        return match ? match[0] : '';
+    };
+
+    const fetchRegistrationByPayload = async (decodedText: string) => {
+        const parsed = parseQrPayload(decodedText);
+
+        if (parsed.type === 'checkin') {
+            const identifier = parsed.identifier.trim();
+            const isEmail = identifier.includes('@');
+
+            let payloadEventId = parsed.eventId;
+            if (!payloadEventId.includes('-')) {
+                const { data: eventBySlug } = await supabase
+                    .from('events')
+                    .select('id')
+                    .eq('slug', payloadEventId)
+                    .maybeSingle();
+                if (eventBySlug?.id) {
+                    payloadEventId = eventBySlug.id;
+                }
+            }
+
+            const candidateEventIds = Array.from(new Set([
+                selectedEventId,
+                payloadEventId,
+            ].filter(Boolean)));
+
+            const emailQueryValue = isEmail ? identifier : '';
+
+            for (const eventId of candidateEventIds) {
+                const { data: byEmail, error: emailError } = await supabase
                     .from('registrations')
                     .select('id, name, status, is_attended, email, event_id')
-                    .eq('email', email)
                     .eq('event_id', eventId)
-                    .single();
+                    .ilike('email', emailQueryValue)
+                    .limit(1);
 
-                if (error || !reg) {
-                    throw new Error('Peserta tidak ditemukan di sistem.');
-                }
+                if (emailError) throw emailError;
+                if (byEmail?.[0]) return byEmail[0];
+            }
 
-                // Verify payment status
-                const validStatuses = ['paid', 'settlement', 'success'];
-                if (!validStatuses.includes(reg.status?.toLowerCase())) {
-                    throw new Error(`Pembayaran peserta ini berstatus: ${reg.status}. Tidak dapat check-in.`);
-                }
-
-                // Check if already attended
-                if (reg.is_attended) {
-                    throw new Error(`Peserta atas nama ${reg.name} sudah melakukan check-in sebelumnya.`);
-                }
-
-                // Update is_attended
-                const { error: updateError } = await supabase
+            // Fallback: find by email globally (for old tickets with mismatched event id/slug)
+            if (isEmail) {
+                const { data: fallbackByEmail, error: fallbackError } = await supabase
                     .from('registrations')
-                    .update({ is_attended: true })
-                    .eq('id', reg.id);
+                    .select('id, name, status, is_attended, email, event_id, created_at')
+                    .ilike('email', identifier)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
 
-                if (updateError) {
-                    throw new Error('Gagal menandai kehadiran di database.');
-                }
+                if (fallbackError) throw fallbackError;
 
-                setScanResult({
-                    status: 'success',
-                    message: 'Check-in Berhasil!',
-                    details: reg
-                });
+                const bestMatch = (fallbackByEmail || []).find((row) => ['paid', 'settlement', 'success'].includes(row.status?.toLowerCase()))
+                    || fallbackByEmail?.[0]
+                    || null;
 
-            } catch (err: any) {
-                console.error("Scan error:", err);
+                return bestMatch;
+            }
+
+            return null;
+        }
+
+        const extractedEmail = extractEmailFromText(parsed.raw);
+        if (!extractedEmail) {
+            return null;
+        }
+
+        let legacyQuery = supabase
+            .from('registrations')
+            .select('id, name, status, is_attended, email, event_id')
+            .ilike('email', extractedEmail)
+            .order('created_at', { ascending: false });
+
+        if (selectedEventId) {
+            legacyQuery = legacyQuery.eq('event_id', selectedEventId);
+        }
+
+        const { data, error } = await legacyQuery.limit(1);
+        if (error) throw error;
+        return data?.[0] || null;
+    };
+
+    const processDecodedText = async (decodedText: string) => {
+        if (!selectedEventId) {
+            setScanResult({
+                status: 'error',
+                message: 'Pilih event terlebih dahulu sebelum check-in.',
+            });
+            return;
+        }
+
+        if (isProcessingRef.current) return;
+        if (decodedText === lastScannedRef.current) return;
+
+        lastScannedRef.current = decodedText;
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => {
+            lastScannedRef.current = null;
+        }, 3000);
+
+        isProcessingRef.current = true;
+        setIsProcessing(true);
+
+        try {
+            const reg = await fetchRegistrationByPayload(decodedText);
+
+            if (!reg) {
+                throw new Error('Peserta tidak ditemukan di sistem.');
+            }
+
+            if (reg.event_id !== selectedEventId) {
+                throw new Error('QR ini milik event lain. Silakan pilih event yang sesuai.');
+            }
+
+            if (!successStatuses.includes(reg.status?.toLowerCase())) {
+                throw new Error(`Pembayaran peserta ini berstatus: ${reg.status}. Tidak dapat check-in.`);
+            }
+
+            if (reg.is_attended) {
+                throw new Error(`Peserta atas nama ${reg.name} sudah melakukan check-in sebelumnya.`);
+            }
+
+            const { error: updateError } = await supabase
+                .from('registrations')
+                .update({ is_attended: true })
+                .eq('id', reg.id);
+
+            if (updateError) {
+                throw new Error('Gagal menandai kehadiran di database.');
+            }
+
+            setScanResult({
+                status: 'success',
+                message: 'Check-in Berhasil!',
+                details: reg,
+            });
+
+            await fetchEvents();
+        } catch (err: any) {
+            console.error('Scan error:', err);
+            setScanResult({
+                status: 'error',
+                message: err.message || 'Terjadi kesalahan saat validasi.',
+            });
+        } finally {
+            isProcessingRef.current = false;
+            setIsProcessing(false);
+        }
+    };
+
+    const startCamera = async () => {
+        if (!selectedCameraId) return;
+
+        if (!scannerRef.current) {
+            try {
+                scannerRef.current = new Html5Qrcode(readerId);
+                setScannerReady(true);
+            } catch (error) {
+                console.error('Failed to create scanner:', error);
                 setScanResult({
                     status: 'error',
-                    message: err.message || 'Terjadi kesalahan saat validasi.'
+                    message: 'Scanner belum siap. Coba refresh halaman.',
                 });
-            } finally {
-                setIsProcessing(false);
+                return;
+            }
+        }
+
+        if (isCameraRunning) return;
+
+        try {
+            await scannerRef.current.start(
+                selectedCameraId,
+                { fps: 10, qrbox: { width: 260, height: 260 } },
+                processDecodedText,
+                () => {
+                    // keep scanning silently
+                }
+            );
+            setIsCameraRunning(true);
+        } catch (error) {
+            console.error('Failed to start camera:', error);
+            setScanResult({
+                status: 'error',
+                message: 'Kamera gagal aktif. Pastikan izin kamera sudah diberikan.',
+            });
+        }
+    };
+
+    const stopCamera = async () => {
+        if (!scannerRef.current || !isCameraRunning) return;
+
+        try {
+            await scannerRef.current.stop();
+        } catch {
+            // ignore stop errors
+        }
+        setIsCameraRunning(false);
+    };
+
+    const handleUploadFile = async (file: File) => {
+        if (!selectedEventId) {
+            setScanResult({
+                status: 'error',
+                message: 'Pilih event terlebih dahulu sebelum check-in.',
+            });
+            return;
+        }
+
+        if (!scannerRef.current) {
+            try {
+                scannerRef.current = new Html5Qrcode(readerId);
+                setScannerReady(true);
+            } catch (error) {
+                console.error('Failed to create scanner:', error);
+                setScanResult({
+                    status: 'error',
+                    message: 'Scanner belum siap. Coba refresh halaman.',
+                });
+                return;
+            }
+        }
+
+        try {
+            setIsUploadProcessing(true);
+
+            if (isCameraRunning && scannerRef.current) {
+                try {
+                    await scannerRef.current.stop();
+                } catch {
+                    // ignore stop errors
+                }
+                setIsCameraRunning(false);
+            }
+
+            const decodedText = await scannerRef.current.scanFile(file, true);
+            await processDecodedText(decodedText);
+        } catch (error: any) {
+            console.error('Upload scan error:', error);
+            setScanResult({
+                status: 'error',
+                message: error?.message || 'Gagal membaca barcode dari gambar.',
+            });
+        } finally {
+            setIsUploadProcessing(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const cameras = await Html5Qrcode.getCameras();
+                const formatted = cameras.map((camera) => ({
+                    id: camera.id,
+                    label: camera.label || `Camera ${camera.id}`,
+                }));
+                setCameraList(formatted);
+                if (formatted[0]) {
+                    setSelectedCameraId(formatted[0].id);
+                }
+                setScannerReady(true);
+            } catch (error) {
+                console.error('Failed to initialize scanner:', error);
+                setScanResult({
+                    status: 'error',
+                    message: 'Gagal menginisialisasi scanner/kamera. Cek izin browser lalu refresh.',
+                });
             }
         };
 
-        const onScanFailure = (/* error: any */) => {
-            // we do nothing on failure usually, just keep scanning
-        };
+        init();
+        fetchEvents();
 
-        scanner.render(onScanSuccess, onScanFailure);
+        const channel = supabase
+            .channel('scanner-events-refresh')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'registrations' },
+                () => {
+                    fetchEvents();
+                }
+            )
+            .subscribe();
 
         return () => {
-            scanner.clear().catch(error => {
-                console.error("Failed to clear html5QrcodeScanner. ", error);
-            });
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            supabase.removeChannel(channel);
+
+            if (scannerRef.current) {
+                scannerRef.current.stop().catch(() => {
+                    // ignore
+                });
+                try {
+                    scannerRef.current.clear();
+                } catch {
+                    // ignore clear errors
+                }
+                scannerRef.current = null;
+            }
         };
     }, []);
 
@@ -122,75 +475,173 @@ export const Scanner: React.FC = () => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto p-4 md:p-8">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">QR Scanner</h1>
-                <p className="text-gray-500">Arahkan kamera ke QR Code di tiket peserta.</p>
-            </div>
+        <div className="w-full space-y-5">
+            <div className="rounded-xl border border-gray-200 p-4 md:p-5 bg-gray-50/70">
+                <h1 className="text-2xl font-bold text-gray-900">Check-in Peserta</h1>
+                <p className="text-gray-500 mt-1">Pilih event terlebih dahulu, lalu scan QR melalui kamera atau upload gambar tiket.</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Scanner View */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col items-center">
-                    <div className="w-full bg-slate-50 p-4 border-b border-gray-100">
-                        <h2 className="font-semibold text-gray-700 text-center">Kamera</h2>
+                <div className="mt-4 grid grid-cols-1 lg:grid-cols-4 gap-3">
+                    <div className="lg:col-span-2">
+                        <label className="text-sm font-medium text-gray-700">Event</label>
+                        <select
+                            className="mt-1 w-full px-3 py-2 border rounded-lg bg-white"
+                            value={selectedEventId}
+                            onChange={(e) => setSelectedEventId(e.target.value)}
+                            disabled={loadingEvents}
+                        >
+                            <option value="">Pilih Event</option>
+                            {events.filter((event) => event?.id).map((event) => (
+                                <option key={event.id} value={event.id}>
+                                    {event.title || 'Untitled Event'}{event.date_time ? ` • ${new Date(event.date_time).toLocaleDateString('id-ID')}` : ''}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                    <div className="w-full p-4">
-                        <div id="reader" className="w-full h-auto min-h-[300px] border-none"></div>
+
+                    <div className="border border-gray-200 rounded-lg p-3">
+                        <p className="text-xs text-gray-500">Peserta Lunas</p>
+                        <p className="text-xl font-bold text-gray-900">{paidCount}</p>
+                    </div>
+                    <div className="border border-gray-200 rounded-lg p-3">
+                        <p className="text-xs text-gray-500">Checked-in / Belum</p>
+                        <p className="text-xl font-bold text-gray-900">{checkedInCount} / {notCheckedInCount}</p>
                     </div>
                 </div>
 
-                {/* Result View */}
-                <div className="flex flex-col gap-4">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full justify-center min-h-[350px]">
-                        {isProcessing ? (
-                            <div className="flex flex-col items-center justify-center text-center p-6 space-y-4">
-                                <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-                                <p className="text-gray-600 font-medium">Memverifikasi tiket...</p>
-                            </div>
-                        ) : scanResult.status === 'idle' ? (
-                            <div className="flex flex-col items-center justify-center text-center p-6 text-gray-400">
-                                <span className="material-symbols-outlined text-[64px] mb-4 opacity-50">qr_code_scanner</span>
-                                <h3 className="text-lg font-semibold text-gray-700 mb-1">Siap Memindai</h3>
-                                <p className="text-sm">Hasil scan akan muncul di sini.</p>
-                            </div>
-                        ) : scanResult.status === 'success' ? (
-                            <div className="flex flex-col items-center text-center p-4">
-                                <div className="size-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-                                    <CheckCircle2 size={40} />
-                                </div>
-                                <h3 className="text-2xl font-bold text-gray-900 mb-2">{scanResult.message}</h3>
-                                <div className="bg-gray-50 w-full rounded-lg p-4 mt-4 border border-gray-100 text-left">
-                                    <p className="text-sm text-gray-500 mb-1">Nama Peserta:</p>
-                                    <p className="font-semibold text-gray-900 mb-4">{scanResult.details?.name}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${isCameraRunning ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
+                        {isCameraRunning ? 'Kamera Aktif' : 'Kamera Nonaktif'}
+                    </span>
+                    {selectedEventId && (
+                        <Link
+                            to={`/admin/dashboard?tab=paid-registrants&eventId=${selectedEventId}`}
+                            className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200"
+                        >
+                            Lihat Data Registrants Event Ini
+                        </Link>
+                    )}
+                </div>
+            </div>
 
-                                    <p className="text-sm text-gray-500 mb-1">Email:</p>
-                                    <p className="font-semibold text-gray-900">{scanResult.details?.email}</p>
-                                </div>
-                                <button
-                                    onClick={resetScan}
-                                    className="mt-6 px-6 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors w-full"
-                                >
-                                    Scan Tiket Lain
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center text-center p-4">
-                                <div className="size-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-6">
-                                    <XCircle size={40} />
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">Check-in Gagal</h3>
-                                <p className="text-red-600 mt-2 p-3 bg-red-50 rounded-lg w-full text-sm border border-red-100">
-                                    {scanResult.message}
-                                </p>
-                                <button
-                                    onClick={resetScan}
-                                    className="mt-6 px-6 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors w-full"
-                                >
-                                    Coba Lagi / Scan Baru
-                                </button>
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100 flex flex-col gap-3">
+                        <h2 className="font-semibold text-gray-800">Scanner</h2>
+
+                        <div className="flex flex-col md:flex-row md:items-center gap-2">
+                            <select
+                                value={selectedCameraId}
+                                onChange={(e) => setSelectedCameraId(e.target.value)}
+                                className="h-10 px-3 py-2 border rounded-lg bg-white text-sm w-full md:w-72"
+                                disabled={cameraList.length === 0}
+                            >
+                                {cameraList.length === 0 && <option value="">Tidak ada kamera</option>}
+                                {cameraList.map((camera) => (
+                                    <option key={camera.id} value={camera.id}>{camera.label}</option>
+                                ))}
+                            </select>
+
+                            <button
+                                onClick={startCamera}
+                                disabled={!selectedCameraId || isCameraRunning}
+                                className="h-10 inline-flex items-center justify-center gap-2 px-4 text-sm rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                            >
+                                <Camera size={16} />
+                                Scan Camera
+                            </button>
+
+                            <button
+                                onClick={stopCamera}
+                                disabled={!isCameraRunning}
+                                className="h-10 inline-flex items-center justify-center gap-2 px-4 text-sm rounded-lg border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+                            >
+                                <StopCircle size={16} />
+                                Stop
+                            </button>
+
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        handleUploadFile(file);
+                                    }
+                                }}
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploadProcessing}
+                                className="h-10 inline-flex items-center justify-center gap-2 px-4 text-sm rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                            >
+                                {isUploadProcessing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                Upload QR
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500">Tips: gunakan Upload QR jika kamera sulit fokus atau pencahayaan kurang.</p>
+                    </div>
+
+                    <div className="p-4">
+                        {!scannerReady && (
+                            <div className="mb-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                Menyiapkan scanner...
                             </div>
                         )}
+                        <div id={readerId} className="w-full min-h-[340px]" />
                     </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col justify-center min-h-[350px]">
+                    {isProcessing || isUploadProcessing ? (
+                        <div className="flex flex-col items-center justify-center text-center p-6 space-y-4">
+                            <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+                            <p className="text-gray-600 font-medium">Memverifikasi tiket...</p>
+                        </div>
+                    ) : scanResult.status === 'idle' ? (
+                        <div className="flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                            <span className="material-symbols-outlined text-[64px] mb-4 opacity-50">qr_code_scanner</span>
+                            <h3 className="text-lg font-semibold text-gray-700 mb-1">Siap Memindai</h3>
+                            <p className="text-sm">Pilih event dan lakukan scan untuk memulai check-in.</p>
+                        </div>
+                    ) : scanResult.status === 'success' ? (
+                        <div className="flex flex-col items-center text-center p-4">
+                            <div className="size-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+                                <CheckCircle2 size={40} />
+                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">{scanResult.message}</h3>
+                            <div className="bg-gray-50 w-full rounded-lg p-4 mt-4 border border-gray-100 text-left">
+                                <p className="text-sm text-gray-500 mb-1">Nama Peserta:</p>
+                                <p className="font-semibold text-gray-900 mb-4">{scanResult.details?.name}</p>
+
+                                <p className="text-sm text-gray-500 mb-1">Email:</p>
+                                <p className="font-semibold text-gray-900">{scanResult.details?.email}</p>
+                            </div>
+                            <button
+                                onClick={resetScan}
+                                className="mt-6 px-6 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors w-full"
+                            >
+                                Scan Tiket Lain
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center text-center p-4">
+                            <div className="size-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-6">
+                                <XCircle size={40} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Check-in Gagal</h3>
+                            <p className="text-red-600 mt-2 p-3 bg-red-50 rounded-lg w-full text-sm border border-red-100">
+                                {scanResult.message}
+                            </p>
+                            <button
+                                onClick={resetScan}
+                                className="mt-6 px-6 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors w-full"
+                            >
+                                Coba Lagi / Scan Baru
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -15,6 +15,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ message: 'Email and name are required' });
     }
 
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        return res.status(500).json({
+            success: false,
+            message: 'SMTP credentials are not configured. Please set SMTP_USER and SMTP_PASS.',
+        });
+    }
+
     // Generate a unique ticket ID if none provided
     const finalTicketId = ticketId || `TICKET-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
@@ -149,8 +156,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log('Message sent: %s', info.messageId);
 
         return res.status(200).json({ success: true, message: 'Email sent successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error sending email:', error);
-        return res.status(500).json({ success: false, message: 'Failed to send email', error });
+        const message = error?.message || error?.response || 'Failed to send email';
+        return res.status(500).json({ success: false, message });
     }
 }

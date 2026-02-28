@@ -94,7 +94,7 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                     </div>
                     <div className="flex items-start gap-4">
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-100 text-[#111814]">
-                            <span className="material-symbols-outlined block">videocam</span>
+                            <span className="material-symbols-outlined block">location_on</span>
                         </div>
                         <div>
                             <p className="text-sm text-slate-500 font-medium">Lokasi</p>

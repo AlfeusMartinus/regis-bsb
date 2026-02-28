@@ -167,6 +167,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
 
             if (data?.link) {
                 sessionStorage.setItem('is_initiating_payment', 'true');
+                sessionStorage.setItem('pending_registration_data', JSON.stringify({
+                    email: formData.email,
+                    name: formData.fullName,
+                    eventName: eventName,
+                    ticketId: `TKT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`
+                }));
 
                 if (window.loadJokulCheckout) {
                     window.loadJokulCheckout(data.link);
@@ -201,6 +207,24 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
+
+            // Trigger email sending
+            const pendingDataString = sessionStorage.getItem('pending_registration_data');
+            if (pendingDataString) {
+                try {
+                    const parsedData = JSON.parse(pendingDataString);
+                    fetch('/api/send-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(parsedData)
+                    }).then(res => res.json())
+                        .then(data => console.log('Email API response:', data))
+                        .catch(err => console.error('Failed to trigger email:', err));
+                } catch (e) {
+                    console.error('Error parsing pending registration data:', e);
+                }
+                sessionStorage.removeItem('pending_registration_data');
+            }
         } else if (paymentParam === 'cancel') {
             setPaymentStatus('cancel');
             sessionStorage.removeItem('is_initiating_payment');

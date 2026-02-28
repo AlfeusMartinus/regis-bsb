@@ -183,13 +183,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 sessionStorage.setItem('pending_registration_data', JSON.stringify({
                     email: formData.email,
                     name: formData.fullName,
+                    whatsapp: formData.whatsapp,
+                    domicile: formData.domicile,
                     eventId: eventId,
                     eventName: eventName || "Acara",
                     ticketId: `TKT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`,
                     date_time: event?.date_time,
                     location: event?.location,
                     location_detail: event?.location_detail,
-                    location_link: event?.location_link
+                    location_link: event?.location_link,
+                    university: formData.status === 'student' ? formData.university : null,
+                    major: formData.status === 'student' ? formData.major : null,
+                    institution: formData.status === 'professional' ? formData.institution : null,
+                    role: formData.status === 'professional' ? formData.role : null,
+                    info_source: formData.info_source,
+                    info_source_others: formData.info_source_others
                 }));
 
                 if (window.loadJokulCheckout) {

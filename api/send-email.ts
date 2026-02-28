@@ -7,7 +7,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ message: 'Method Not Allowed' });
     }
 
-    const { email, name, eventName, eventId, ticketId, date_time, location, location_detail, location_link } = req.body;
+    const {
+        email, name, eventName, eventId, ticketId, date_time, location, location_detail, location_link
+    } = req.body;
 
     if (!email || !name) {
         return res.status(400).json({ message: 'Email and name are required' });
@@ -49,9 +51,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             `DTEND:${formatDateForIcs(endDateObj)}`,
             `DTSTAMP:${formatDateForIcs(new Date())}`,
             `UID:${finalTicketId}@belajarsambilberamal.com`,
-            `SUMMARY:${eventName || 'Acara'}`,
-            `LOCATION:${location || ''}${location_detail ? ' - ' + location_detail : ''}`,
-            `DESCRIPTION:Tiket ID: ${finalTicketId}\\nTerima kasih telah mendaftar acara ${eventName || 'Acara'}.`,
+            `SUMMARY:Check-in: ${eventName || 'Acara'}`,
+            `LOCATION:${location || ''}${location_detail ? ' (' + location_detail + ')' : ''}${location_link ? ' - ' + location_link : ''}`,
+            `DESCRIPTION:Tiket ID: ${finalTicketId}\\n\\nInformasi Acara:\\n- Tanggal: ${dateStr}\\n- Waktu: ${timeStr}\\n- Lokasi: ${location}\\n- Detail: ${location_detail || '-'}\\n- Link: ${location_link || '-'}\\n\\nTerima kasih telah mendaftar acara ${eventName || 'Acara'}.`,
             'STATUS:CONFIRMED',
             'SEQUENCE:0',
             'END:VEVENT',
@@ -98,9 +100,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>📅 Tanggal:</strong> ${dateStr}</p>
                         <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>⏰ Waktu:</strong> ${timeStr}</p>
                         <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>📍 Lokasi:</strong> ${location || 'Online'}</p>
-                        ${location_detail ? `<p style="margin: 0 0 8px 0; color: #64748b; font-size: 14px;">${location_detail}</p>` : ''}
-                        ${location_link ? `<p style="margin: 0;"><a href="${location_link}" style="color: #2563eb; text-decoration: none;">Buka di Google Maps &rarr;</a></p>` : ''}
+                        ${location_detail ? `<p style="margin: 0 0 8px 0; color: #475569; font-size: 14px;"><em>${location_detail}</em></p>` : ''}
+                        ${location_link ? `<p style="margin: 8px 0 0 0;"><a href="${location_link}" style="display: inline-block; padding: 6px 12px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: bold;">Buka di Google Maps &rarr;</a></p>` : ''}
                     </div>
+
+
                     
                     <div style="background-color: #f3f4f6; border-radius: 12px; padding: 24px; text-align: center; margin: 30px 0;">
                         <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: bold; color: #1f2937;">

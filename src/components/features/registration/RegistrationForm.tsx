@@ -251,8 +251,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(parsedData)
-                    }).then(res => res.json())
-                        .then(data => console.log('Email API response:', data))
+                    }).then(async (res) => {
+                        const raw = await res.text();
+                        let data: any = {};
+                        try {
+                            data = raw ? JSON.parse(raw) : {};
+                        } catch {
+                            data = {};
+                        }
+
+                        if (!res.ok || data?.success === false) {
+                            console.error('Email API failed:', data?.message || raw || `HTTP ${res.status}`);
+                            return;
+                        }
+
+                        console.log('Email API response:', data);
+                    })
                         .catch(err => console.error('Failed to trigger email:', err));
                 } catch (e) {
                     console.error('Error parsing pending registration data:', e);

@@ -15,6 +15,7 @@ interface EventData {
     location: string;
     speakers?: Speaker[];
     moderator?: Speaker;
+    location_link?: string;
 }
 
 interface EventSidebarProps {
@@ -99,6 +100,16 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                         <div>
                             <p className="text-sm text-slate-500 font-medium">Lokasi</p>
                             <p className="font-bold text-[#111814]">{displayEvent.location}</p>
+                            <a
+                                href={displayEvent.location_link ? displayEvent.location_link : `https://maps.google.com/?q=${encodeURIComponent(displayEvent.location)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors mt-1"
+                                title="Buka di Google Maps"
+                            >
+                                <span className="material-symbols-outlined text-[14px]">map</span>
+                                Buka di Google Maps
+                            </a>
                         </div>
                     </div>
                 </div>

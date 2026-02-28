@@ -321,7 +321,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                 <div className="flex flex-col gap-2 md:col-span-2 p-4 bg-blue-50/50 rounded-lg border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
                                     <div className="flex gap-2 text-xs text-blue-600 mb-2">
                                         <span className="material-symbols-outlined text-sm">info</span>
-                                        <span>Jika Mahasiswa, isi Jurusan. Jika Profesional, isi Instansi/Perusahaan.</span>
+                                        <span>
+                                            {status === 'student'
+                                                ? 'Silakan isi Jurusan Anda.'
+                                                : 'Silakan isi Instansi/Perusahaan Anda.'}
+                                        </span>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         {status === 'student' && (

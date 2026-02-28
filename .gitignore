@@ -31,3 +31,4 @@ supabase/
 *.njsproj
 *.sln
 *.sw?
+.vercel

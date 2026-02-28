@@ -319,10 +319,10 @@ export const RegistrantList: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {reg.current_status || '-'}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs break-words">
                                         {reg.current_status === 'student' ? reg.university : reg.institution || '-'}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs break-words">
                                         {reg.current_status === 'student' ? reg.major : reg.role || '-'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -331,11 +331,11 @@ export const RegistrantList: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {reg.mouse_brand || '-'}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={reg.work_device_factors?.join(', ') + (reg.work_device_factors_others ? `: ${reg.work_device_factors_others}` : '')}>
+                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-sm break-words">
                                         {reg.work_device_factors?.join(', ')}
                                         {reg.work_device_factors_others && ` (${reg.work_device_factors_others})`}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={reg.prayer}>
+                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-sm break-words">
                                         {reg.prayer || '-'}
                                     </td>
                                 </tr>

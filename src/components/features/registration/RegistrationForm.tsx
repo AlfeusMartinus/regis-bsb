@@ -29,9 +29,10 @@ interface RegistrationFormProps {
     eventName?: string;
     eventSlug?: string;
     minimumDonation?: number;
+    event?: any;
 }
 
-export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug, minimumDonation = 1000 }) => {
+export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug, minimumDonation = 1000, event }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
@@ -173,11 +174,31 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             if (error) {
                 console.error("Payment Function Error:", error);
                 alert("Gagal membuat pembayaran: " + error.message);
+                setIsLoading(false);
                 return;
             }
 
             if (data?.link) {
                 sessionStorage.setItem('is_initiating_payment', 'true');
+                sessionStorage.setItem('pending_registration_data', JSON.stringify({
+                    email: formData.email,
+                    name: formData.fullName,
+                    whatsapp: formData.whatsapp,
+                    domicile: formData.domicile,
+                    eventId: eventId,
+                    eventName: eventName || "Acara",
+                    ticketId: `TKT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`,
+                    date_time: event?.date_time,
+                    location: event?.location,
+                    location_detail: event?.location_detail,
+                    location_link: event?.location_link,
+                    university: formData.status === 'student' ? formData.university : null,
+                    major: formData.status === 'student' ? formData.major : null,
+                    institution: formData.status === 'professional' ? formData.institution : null,
+                    role: formData.status === 'professional' ? formData.role : null,
+                    info_source: formData.info_source,
+                    info_source_others: formData.info_source_others
+                }));
 
                 if (window.loadJokulCheckout) {
                     window.loadJokulCheckout(data.link);
@@ -186,12 +207,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 }
             } else {
                 alert("Gagal mendapatkan link pembayaran.");
+                setIsLoading(false);
             }
 
         } catch (err) {
             console.error("Unexpected Error:", err);
             alert("Terjadi kesalahan sistem.");
-        } finally {
             setIsLoading(false);
         }
     };
@@ -212,6 +233,24 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
+
+            // Trigger email sending
+            const pendingDataString = sessionStorage.getItem('pending_registration_data');
+            if (pendingDataString) {
+                try {
+                    const parsedData = JSON.parse(pendingDataString);
+                    fetch('/api/send-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(parsedData)
+                    }).then(res => res.json())
+                        .then(data => console.log('Email API response:', data))
+                        .catch(err => console.error('Failed to trigger email:', err));
+                } catch (e) {
+                    console.error('Error parsing pending registration data:', e);
+                }
+                sessionStorage.removeItem('pending_registration_data');
+            }
         } else if (paymentParam === 'cancel') {
             setPaymentStatus('cancel');
             sessionStorage.removeItem('is_initiating_payment');

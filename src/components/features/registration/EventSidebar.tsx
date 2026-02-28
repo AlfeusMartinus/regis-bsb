@@ -13,9 +13,10 @@ interface EventData {
     description?: string;
     date_time: string;
     location: string;
+    location_detail?: string;
+    location_link?: string;
     speakers?: Speaker[];
     moderator?: Speaker;
-    location_link?: string;
 }
 
 interface EventSidebarProps {
@@ -100,6 +101,11 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                         <div>
                             <p className="text-sm text-slate-500 font-medium">Lokasi</p>
                             <p className="font-bold text-[#111814]">{displayEvent.location}</p>
+                            {displayEvent.location_detail && (
+                                <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-[280px]">
+                                    {displayEvent.location_detail}
+                                </p>
+                            )}
                             <a
                                 href={displayEvent.location_link ? displayEvent.location_link : `https://maps.google.com/?q=${encodeURIComponent(displayEvent.location)}`}
                                 target="_blank"

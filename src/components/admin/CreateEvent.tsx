@@ -17,6 +17,7 @@ interface EventFormHelper {
     description: string;
     date_time: string;
     location: string;
+    location_detail?: string;
     location_link?: string;
     speakers: Speaker[];
     moderator: Speaker;
@@ -100,6 +101,7 @@ export const CreateEvent: React.FC = () => {
                 description: data.description,
                 date_time: new Date(data.date_time).toISOString(),
                 location: data.location,
+                location_detail: data.location_detail,
                 location_link: data.location_link,
                 speakers: speakersData,
                 moderator: moderatorData,
@@ -166,7 +168,13 @@ export const CreateEvent: React.FC = () => {
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Location</label>
-                    <input {...register('location')} placeholder="Zoom Meeting / Jakarta" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2" />
+                    <input {...register('location')} placeholder="Armor Genuine Urban Forest" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2" />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Location Detail (Optional)</label>
+                    <textarea {...register('location_detail')} placeholder="Jl. Leuwi Panjang No.86, RT.01/RW.04..." rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2 text-sm text-gray-600"></textarea>
+                    <p className="text-xs text-gray-500 mt-1">Full detailed address to show below the location name.</p>
                 </div>
 
                 <div>

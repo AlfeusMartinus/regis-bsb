@@ -147,6 +147,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     name: formData.fullName,
                     email: formData.email,
                     phone: formData.whatsapp,
+                    domicile: formData.domicile,
                     prayer: formData.prayer,
                     eventId: eventId,
                     eventName: eventName,

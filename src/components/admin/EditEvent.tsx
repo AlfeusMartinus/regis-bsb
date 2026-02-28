@@ -17,6 +17,7 @@ interface EventFormHelper {
     description: string;
     date_time: string;
     location: string;
+    location_link?: string;
     speakers: Speaker[];
     moderator: Speaker;
     minimum_donation?: string;
@@ -87,6 +88,7 @@ export const EditEvent: React.FC = () => {
                     description: data.description,
                     date_time: localIso,
                     location: data.location,
+                    location_link: data.location_link || '',
                     speakers: speakers.length > 0 ? speakers : [{ name: '', title: '' }],
                     moderator: moderator,
                     minimum_donation: data.minimum_donation ? formatCurrency(data.minimum_donation.toString()) : ''
@@ -157,6 +159,7 @@ export const EditEvent: React.FC = () => {
                     description: formData.description,
                     date_time: new Date(formData.date_time).toISOString(), // Convert back to UTC ISO
                     location: formData.location,
+                    location_link: formData.location_link,
                     speakers: speakersData,
                     moderator: moderatorData,
                     minimum_donation: formData.minimum_donation ? Number(formData.minimum_donation.replace(/\./g, '')) : 1000
@@ -234,6 +237,12 @@ export const EditEvent: React.FC = () => {
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Location</label>
                     <input {...register('location')} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2" />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Google Maps Link (Optional)</label>
+                    <input {...register('location_link')} placeholder="https://maps.app.goo.gl/..." type="url" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2 text-blue-600" />
+                    <p className="text-xs text-gray-500 mt-1">Leave empty to use default Google Maps search by Location name.</p>
                 </div>
 
                 {/* Speakers */}

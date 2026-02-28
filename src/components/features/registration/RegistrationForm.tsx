@@ -242,8 +242,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
-        } else if (paymentParam === 'cancel' || paymentParam === 'failed') {
-
             // Trigger email sending
             const pendingDataString = sessionStorage.getItem('pending_registration_data');
             if (pendingDataString) {
@@ -261,7 +259,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 }
                 sessionStorage.removeItem('pending_registration_data');
             }
-        } else if (paymentParam === 'cancel') {
+        } else if (paymentParam === 'cancel' || paymentParam === 'failed') {
             setPaymentStatus('cancel');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);

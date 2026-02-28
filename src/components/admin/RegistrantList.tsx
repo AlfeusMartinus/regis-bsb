@@ -3,6 +3,28 @@ import { supabase } from '../../lib/supabase';
 import { Loader2, Search, X, Download } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
+const ExpandableText: React.FC<{ text: string | null | undefined; maxLength?: number }> = ({ text, maxLength = 30 }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    if (!text || text === '-') return <span>-</span>;
+
+    if (text.length <= maxLength) {
+        return <span>{text}</span>;
+    }
+
+    return (
+        <div className="flex flex-col items-start min-w-[200px]">
+            <span>{isExpanded ? text : `${text.substring(0, maxLength)}...`}</span>
+            <button
+                onClick={(e) => { e.preventDefault(); setIsExpanded(!isExpanded); }}
+                className="mt-1 text-primary hover:text-primary/80 transition-colors text-xs font-semibold underline"
+            >
+                {isExpanded ? 'Sebagian' : 'Lihat selengkapnya'}
+            </button>
+        </div>
+    );
+};
+
 export const RegistrantList: React.FC = () => {
     const [registrants, setRegistrants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -158,7 +180,7 @@ export const RegistrantList: React.FC = () => {
     };
 
     const handleExportCSV = () => {
-        const headers = ['Date', 'Name', 'Email', 'Phone', 'Domicile', 'Event', 'Amount', 'Status', 'Gender', 'Role', 'Instansi / Kampus', 'Jabatan / Jurusan', 'Use Mouse/Keyboard External', 'Mouse Brand', 'Factors', 'Message'];
+        const headers = ['Date', 'Name', 'Email', 'Phone', 'Domicile', 'Info Source', 'Event', 'Amount', 'Status', 'Gender', 'Role', 'Instansi / Kampus', 'Jabatan / Jurusan', 'Use Mouse/Keyboard External', 'Mouse Brand', 'Factors', 'Message'];
         const csvContent = [
             headers.join(','),
             ...filteredRegistrants.map(reg => {
@@ -168,6 +190,7 @@ export const RegistrantList: React.FC = () => {
                     `"${reg.email?.replace(/"/g, '""') || ''}"`,
                     `"${reg.phone?.replace(/"/g, '""') || ''}"`,
                     `"${reg.domicile?.replace(/"/g, '""') || ''}"`,
+                    `"${(reg.info_source === 'Others' ? reg.info_source_others : reg.info_source)?.replace(/"/g, '""') || ''}"`,
                     `"${reg.events?.title?.replace(/"/g, '""') || ''}"`,
                     reg.amount,
                     reg.status,
@@ -264,6 +287,7 @@ export const RegistrantList: React.FC = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Email</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Phone</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Domicile</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Info Source</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Event</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Amount</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
@@ -280,7 +304,7 @@ export const RegistrantList: React.FC = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {filteredRegistrants.length === 0 ? (
                             <tr>
-                                <td colSpan={16} className="px-6 py-8 text-center text-gray-500">
+                                <td colSpan={17} className="px-6 py-8 text-center text-gray-500">
                                     No registrants found.
                                 </td>
                             </tr>
@@ -302,6 +326,9 @@ export const RegistrantList: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {reg.domicile || '-'}
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {reg.info_source === 'Others' ? reg.info_source_others : reg.info_source || '-'}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                         {reg.events?.title || '-'}
                                     </td>
@@ -319,11 +346,11 @@ export const RegistrantList: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {reg.current_status || '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs break-words">
-                                        {reg.current_status === 'student' ? reg.university : reg.institution || '-'}
+                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs break-words align-top">
+                                        <ExpandableText text={reg.current_status === 'student' ? reg.university : reg.institution || '-'} />
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs break-words">
-                                        {reg.current_status === 'student' ? reg.major : reg.role || '-'}
+                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs break-words align-top">
+                                        <ExpandableText text={reg.current_status === 'student' ? reg.major : reg.role || '-'} />
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {reg.uses_external_peripherals ? 'YES' : 'NO'}
@@ -331,12 +358,11 @@ export const RegistrantList: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {reg.mouse_brand || '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-sm break-words">
-                                        {reg.work_device_factors?.join(', ')}
-                                        {reg.work_device_factors_others && ` (${reg.work_device_factors_others})`}
+                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-sm break-words align-top">
+                                        <ExpandableText text={(reg.work_device_factors?.join(', ') || '') + (reg.work_device_factors_others ? ` (${reg.work_device_factors_others})` : '')} />
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-sm break-words">
-                                        {reg.prayer || '-'}
+                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-sm break-words align-top">
+                                        <ExpandableText text={reg.prayer || '-'} />
                                     </td>
                                 </tr>
                             ))
@@ -348,7 +374,7 @@ export const RegistrantList: React.FC = () => {
                             <td className="px-6 py-3 whitespace-nowrap">
                                 Rp {filteredRegistrants.reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0).toLocaleString()}
                             </td>
-                            <td colSpan={10}></td>
+                            <td colSpan={11}></td>
                         </tr>
                         <tr className="bg-green-50 text-green-900">
                             <td colSpan={5} className="px-6 py-3 text-right">Total Settle Amount:</td>
@@ -358,7 +384,7 @@ export const RegistrantList: React.FC = () => {
                                     .reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0)
                                     .toLocaleString()}
                             </td>
-                            <td colSpan={10}></td>
+                            <td colSpan={11}></td>
                         </tr>
                     </tfoot>
                 </table>

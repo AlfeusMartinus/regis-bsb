@@ -19,6 +19,8 @@ export const personalBaseSchema = z.object({
     mouse_brand: z.string().optional(),
     work_device_factors: z.array(z.string()).min(1, { message: "Pilih minimal 1 faktor" }),
     work_device_factors_others: z.string().optional(),
+    info_source: z.string().min(1, { message: "Pilih salah satu sumber informasi" }),
+    info_source_others: z.string().optional(),
 });
 
 export const personalSchema = personalBaseSchema.superRefine((data, ctx) => {
@@ -66,6 +68,13 @@ export const personalSchema = personalBaseSchema.superRefine((data, ctx) => {
             code: z.ZodIssueCode.custom,
             message: "Sebutkan faktor lainnya",
             path: ['work_device_factors_others'],
+        });
+    }
+    if (data.info_source === 'Others' && !data.info_source_others) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Sebutkan darimana Anda mengetahui event ini",
+            path: ['info_source_others'],
         });
     }
 });

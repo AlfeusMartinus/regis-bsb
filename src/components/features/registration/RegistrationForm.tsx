@@ -194,13 +194,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
     React.useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const paymentParam = params.get('payment');
-        const isInitiated = sessionStorage.getItem('is_initiating_payment') === 'true';
 
-        if ((paymentParam === 'success' || paymentParam === 'result') && isInitiated) {
+        if (paymentParam === 'success' || paymentParam === 'result') {
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
-        } else if (paymentParam === 'cancel' && isInitiated) {
+        } else if (paymentParam === 'cancel') {
             setPaymentStatus('cancel');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);

@@ -79,6 +79,27 @@ export const EventList: React.FC = () => {
         setLoading(false);
     };
 
+    const handleTogglePublish = async (eventId: string, currentValue: boolean) => {
+        const action = currentValue ? 'jadikan Draft' : 'Publish';
+        const isConfirmed = await showConfirm(`Yakin ingin ${action} event ini?`);
+        if (!isConfirmed) return;
+
+        const { error } = await supabase
+            .from('events')
+            .update({ is_published: !currentValue })
+            .eq('id', eventId);
+
+        if (error) {
+            console.error('Failed to toggle publish:', error);
+            await showAlert({ message: 'Gagal mengubah status event.', severity: 'error' });
+        } else {
+            // Update local state instantly without full re-fetch
+            setEvents(prev => prev.map(e =>
+                e.id === eventId ? { ...e, is_published: !currentValue } : e
+            ));
+        }
+    };
+
     const handleDelete = async (eventId: string) => {
         const isConfirmed = await showConfirm('Are you sure you want to delete this event?');
         if (isConfirmed) {
@@ -181,9 +202,21 @@ export const EventList: React.FC = () => {
                                         {event.location}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${event.is_published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                            {event.is_published ? 'Published' : 'Draft'}
-                                        </span>
+                                        {role === 'superadmin' ? (
+                                            <button
+                                                onClick={() => handleTogglePublish(event.id, event.is_published)}
+                                                title={event.is_published ? 'Klik untuk jadikan Draft' : 'Klik untuk Publish'}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${event.is_published ? 'bg-green-500' : 'bg-gray-300'
+                                                    }`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${event.is_published ? 'translate-x-6' : 'translate-x-1'
+                                                    }`} />
+                                            </button>
+                                        ) : (
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${event.is_published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                {event.is_published ? 'Published' : 'Draft'}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end gap-3">

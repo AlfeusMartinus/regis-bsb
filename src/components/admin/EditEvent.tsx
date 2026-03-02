@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { supabase } from '../../lib/supabase';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Loader2, Plus, Trash2, Upload, Save, ArrowLeft } from 'lucide-react';
+import { Loader2, Plus, Trash2, Upload, Save, ArrowLeft, Globe, EyeOff } from 'lucide-react';
 
 interface Speaker {
     name: string;
@@ -35,6 +35,8 @@ export const EditEvent: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [isPublished, setIsPublished] = useState(false);
+    const publishIntentRef = useRef<boolean | null>(null);
 
     // File states for uploads
     const [speakerFiles, setSpeakerFiles] = useState<{ [key: number]: File | null }>({});
@@ -95,6 +97,7 @@ export const EditEvent: React.FC = () => {
                     moderator: moderator,
                     minimum_donation: data.minimum_donation ? formatCurrency(data.minimum_donation.toString()) : ''
                 });
+                setIsPublished(!!data.is_published);
             }
         } catch (error) {
             console.error("Error fetching event:", error);
@@ -131,27 +134,25 @@ export const EditEvent: React.FC = () => {
     const onSubmit = async (formData: EventFormHelper) => {
         if (!id) return;
         setSubmitting(true);
+        // If a publish button was clicked, use that intent; otherwise keep current state
+        const publishedState = publishIntentRef.current !== null ? publishIntentRef.current : isPublished;
+        publishIntentRef.current = null; // reset after consuming
         try {
-            // 1. Get existing moderator image URL (from form data which was reset with existing data)
             let moderatorPhotoUrl = formData.moderator.photo_url;
-            // If new file upload, upload and update URL
             if (moderatorFile) {
                 moderatorPhotoUrl = await uploadImage(moderatorFile);
             }
 
             const moderatorData = { ...formData.moderator, photo_url: moderatorPhotoUrl };
 
-            // 2. Handle Speakers
             const speakersData = await Promise.all(formData.speakers.map(async (speaker, index) => {
                 let photoUrl = speaker.photo_url;
-                // Check if new file for this index
                 if (speakerFiles[index]) {
                     photoUrl = await uploadImage(speakerFiles[index]!);
                 }
                 return { ...speaker, photo_url: photoUrl };
             }));
 
-            // 3. Update Event
             const { error } = await supabase
                 .from('events')
                 .update({
@@ -159,20 +160,22 @@ export const EditEvent: React.FC = () => {
                     slug: formData.slug,
                     category: formData.category,
                     description: formData.description,
-                    date_time: new Date(formData.date_time).toISOString(), // Convert back to UTC ISO
+                    date_time: new Date(formData.date_time).toISOString(),
                     location: formData.location,
                     location_detail: formData.location_detail,
                     location_link: formData.location_link,
                     speakers: speakersData,
                     moderator: moderatorData,
-                    minimum_donation: formData.minimum_donation ? Number(formData.minimum_donation.replace(/\./g, '')) : 1000
+                    minimum_donation: formData.minimum_donation ? Number(formData.minimum_donation.replace(/\./g, '')) : 1000,
+                    is_published: publishedState
                 })
                 .eq('id', id);
 
             if (error) throw error;
 
-            alert("Event updated successfully!");
-            navigate('/admin/dashboard?tab=events'); // Go back to list
+            setIsPublished(publishedState);
+            alert(publishedState ? 'Event berhasil dipublish!' : 'Perubahan tersimpan.');
+            navigate('/admin/dashboard?tab=events');
         } catch (error: any) {
             console.error("Error updating event:", error);
             alert('Error updating event: ' + error.message);
@@ -187,11 +190,15 @@ export const EditEvent: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow">
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-3 mb-6">
                 <button onClick={() => navigate('/admin/dashboard?tab=events')} className="p-2 hover:bg-gray-100 rounded-full text-gray-600">
                     <ArrowLeft size={20} />
                 </button>
                 <h2 className="text-2xl font-bold text-gray-800">Edit Event</h2>
+                <span className={`ml-1 px-2.5 py-1 text-xs font-semibold rounded-full ${isPublished ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                    {isPublished ? 'Published' : 'Draft'}
+                </span>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -310,13 +317,37 @@ export const EditEvent: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t">
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                    {/* Publish / Unpublish toggle */}
+                    {!isPublished ? (
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            onClick={() => { publishIntentRef.current = true; }}
+                            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg shadow hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                        >
+                            {submitting ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
+                            Publish Event
+                        </button>
+                    ) : (
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            onClick={() => { publishIntentRef.current = false; }}
+                            className="flex items-center gap-2 px-6 py-2 bg-amber-500 text-white font-semibold rounded-lg shadow hover:bg-amber-600 transition-colors disabled:opacity-50"
+                        >
+                            {submitting ? <Loader2 size={18} className="animate-spin" /> : <EyeOff size={18} />}
+                            Jadikan Draft
+                        </button>
+                    )}
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="px-6 py-2 bg-primary text-white font-bold rounded-lg shadow hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
+                        onClick={() => { publishIntentRef.current = null; }}
+                        className="flex items-center gap-2 px-6 py-2 bg-primary text-white font-bold rounded-lg shadow hover:bg-primary-dark transition-colors disabled:opacity-50"
                     >
-                        {submitting ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Save Changes</>}
+                        {submitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                        Save Changes
                     </button>
                 </div>
             </form>

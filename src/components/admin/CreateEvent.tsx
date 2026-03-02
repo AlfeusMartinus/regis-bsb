@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Plus, Trash2, Upload } from 'lucide-react';
+import { Loader2, Plus, Trash2, Upload, FileText, Globe } from 'lucide-react';
 
 interface Speaker {
     name: string;
@@ -44,6 +44,7 @@ export const CreateEvent: React.FC = () => {
     });
 
     const [submitting, setSubmitting] = useState(false);
+    const publishIntentRef = useRef<boolean>(true);
 
     // File states for uploads (using simple state for now since React Hook Form file handling can be complex)
     const [speakerFiles, setSpeakerFiles] = useState<{ [key: number]: File | null }>({});
@@ -75,6 +76,7 @@ export const CreateEvent: React.FC = () => {
     };
 
     const onSubmit = async (data: EventFormHelper) => {
+        const isPublished = publishIntentRef.current;
         setSubmitting(true);
         try {
             // Upload Moderator Image
@@ -106,7 +108,7 @@ export const CreateEvent: React.FC = () => {
                 speakers: speakersData,
                 moderator: moderatorData,
                 minimum_donation: data.minimum_donation ? Number(data.minimum_donation.replace(/\./g, '')) : 1000,
-                is_published: true // Auto publish for now
+                is_published: isPublished
             });
 
             if (error) throw error;
@@ -235,13 +237,24 @@ export const CreateEvent: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end gap-3 pt-4">
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="px-6 py-2 bg-primary text-white font-bold rounded-lg shadow hover:bg-primary-dark transition-colors disabled:opacity-50"
+                        onClick={() => { publishIntentRef.current = false; }}
+                        className="flex items-center gap-2 px-6 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors disabled:opacity-50"
                     >
-                        {submitting ? <Loader2 className="animate-spin" /> : 'Publish Event'}
+                        {submitting && !publishIntentRef.current ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
+                        Simpan Draft
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={submitting}
+                        onClick={() => { publishIntentRef.current = true; }}
+                        className="flex items-center gap-2 px-6 py-2 bg-primary text-white font-bold rounded-lg shadow hover:bg-primary-dark transition-colors disabled:opacity-50"
+                    >
+                        {submitting && publishIntentRef.current ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
+                        Publish Event
                     </button>
                 </div>
             </form>

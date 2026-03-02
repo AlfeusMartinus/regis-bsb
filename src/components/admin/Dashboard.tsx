@@ -5,7 +5,8 @@ import { Scanner } from './Scanner';
 import { RegistrationOverview } from './RegistrationOverview';
 import { RoleManagement } from './RoleManagement';
 import { AuditLogs } from './AuditLogs';
-import { Calendar, Users, QrCode, ShieldCheck, History } from 'lucide-react';
+import { Analytics } from './Analytics';
+import { Calendar, Users, QrCode, ShieldCheck, History, BarChart2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -31,6 +32,25 @@ export const Dashboard: React.FC = () => {
             {/* Tabs */}
             <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
                 <nav className="flex flex-wrap gap-2" aria-label="Tabs">
+                    {role === 'superadmin' && (
+                        <button
+                            onClick={() => setTab('analytics')}
+                            className={`
+                                group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
+                                ${activeTab === 'analytics'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
+                            `}
+                        >
+                            <BarChart2
+                                className={`
+                                    mr-2 h-4 w-4
+                                    ${activeTab === 'analytics' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
+                                `}
+                            />
+                            Analytics
+                        </button>
+                    )}
                     <button
                         onClick={() => setTab('events')}
                         className={`
@@ -148,6 +168,7 @@ export const Dashboard: React.FC = () => {
 
             {/* Content */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 shadow-sm">
+                {activeTab === 'analytics' && role === 'superadmin' && <Analytics />}
                 {activeTab === 'events' && <EventList />}
                 {activeTab === 'transactions' && <RegistrantList mode="transactions" />}
                 {activeTab === 'paid-registrants' && <RegistrantList mode="paid" />}

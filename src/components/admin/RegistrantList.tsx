@@ -28,11 +28,13 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
     const [searchParams, setSearchParams] = useSearchParams();
     const eventId = searchParams.get('eventId') || 'all';
     const [filterEventName, setFilterEventName] = useState<string | null>(null);
-    const { role } = useAuth();
+    const { role, loading: authLoading } = useAuth();
 
     useEffect(() => {
-        fetchEvents();
-    }, []);
+        if (!authLoading) {
+            fetchEvents();
+        }
+    }, [role, authLoading]);
 
     useEffect(() => {
         fetchRegistrants();
@@ -78,12 +80,35 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
     }, [eventId, events]);
 
     const fetchEvents = async () => {
-        const { data } = await supabase
-            .from('events')
-            .select('id, title')
-            .order('title', { ascending: true });
+        if (role === 'sponsor') {
+            // Only load events assigned to this sponsor
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            if (!userId) { setEvents([]); return; }
 
-        setEvents(data || []);
+            const { data: sponsorEvs } = await supabase
+                .from('sponsor_events')
+                .select('event_id')
+                .eq('user_id', userId);
+
+            const assignedIds = sponsorEvs?.map(e => e.event_id) || [];
+            if (assignedIds.length === 0) { setEvents([]); return; }
+
+            const { data } = await supabase
+                .from('events')
+                .select('id, title')
+                .in('id', assignedIds)
+                .order('title', { ascending: true });
+
+            setEvents(data || []);
+        } else {
+            const { data } = await supabase
+                .from('events')
+                .select('id, title')
+                .order('title', { ascending: true });
+
+            setEvents(data || []);
+        }
     };
 
     const fetchEventName = async (id: string) => {

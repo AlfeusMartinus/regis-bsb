@@ -3,11 +3,15 @@ import { EventList } from './EventList';
 import { RegistrantList } from './RegistrantList';
 import { Scanner } from './Scanner';
 import { RegistrationOverview } from './RegistrationOverview';
-import { Calendar, Users, QrCode } from 'lucide-react';
+import { RoleManagement } from './RoleManagement';
+import { AuditLogs } from './AuditLogs';
+import { Calendar, Users, QrCode, ShieldCheck, History } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
 export const Dashboard: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
+    const { role, canScan, loading } = useAuth();
     // Get tab from URL or default to 'events'
     const rawTab = searchParams.get('tab') || 'events';
     const activeTab = rawTab === 'registrants' ? 'transactions' : rawTab;
@@ -17,6 +21,8 @@ export const Dashboard: React.FC = () => {
         newParams.set('tab', tab);
         setSearchParams(newParams);
     };
+
+    if (loading) return null;
 
     return (
         <div className="space-y-5">
@@ -79,23 +85,64 @@ export const Dashboard: React.FC = () => {
                         Registrants
                     </button>
 
-                    <button
-                        onClick={() => setTab('scanner')}
-                        className={`
-                            group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                            ${activeTab === 'scanner'
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                        `}
-                    >
-                        <QrCode
+                    {(role === 'superadmin' || canScan) && (
+                        <button
+                            onClick={() => setTab('scanner')}
                             className={`
-                                mr-2 h-4 w-4
-                                ${activeTab === 'scanner' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
+                                group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
+                                ${activeTab === 'scanner'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
                             `}
-                        />
-                        Scanner
-                    </button>
+                        >
+                            <QrCode
+                                className={`
+                                    mr-2 h-4 w-4
+                                    ${activeTab === 'scanner' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
+                                `}
+                            />
+                            Scanner
+                        </button>
+                    )}
+
+                    {role === 'superadmin' && (
+                        <>
+                            <button
+                                onClick={() => setTab('roles')}
+                                className={`
+                                    group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
+                                    ${activeTab === 'roles'
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
+                                `}
+                            >
+                                <ShieldCheck
+                                    className={`
+                                        mr-2 h-4 w-4
+                                        ${activeTab === 'roles' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
+                                    `}
+                                />
+                                Role Management
+                            </button>
+                            <button
+                                onClick={() => setTab('audit')}
+                                className={`
+                                    group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
+                                    ${activeTab === 'audit'
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
+                                `}
+                            >
+                                <History
+                                    className={`
+                                        mr-2 h-4 w-4
+                                        ${activeTab === 'audit' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
+                                    `}
+                                />
+                                Audit Logs
+                            </button>
+                        </>
+                    )}
                 </nav>
             </div>
 
@@ -104,7 +151,9 @@ export const Dashboard: React.FC = () => {
                 {activeTab === 'events' && <EventList />}
                 {activeTab === 'transactions' && <RegistrantList mode="transactions" />}
                 {activeTab === 'paid-registrants' && <RegistrantList mode="paid" />}
-                {activeTab === 'scanner' && <Scanner />}
+                {activeTab === 'scanner' && (role === 'superadmin' || canScan) && <Scanner />}
+                {activeTab === 'roles' && role === 'superadmin' && <RoleManagement />}
+                {activeTab === 'audit' && role === 'superadmin' && <AuditLogs />}
             </div>
         </div>
     );

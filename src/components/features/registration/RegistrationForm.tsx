@@ -122,7 +122,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                 'work_device_factors',
                 'work_device_factors_others',
                 'info_source',
-                'info_source_others'
+                'info_source_others',
+                'share_data_sponsor'
             ]);
         }
 
@@ -167,7 +168,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                     work_device_factors: formData.work_device_factors,
                     work_device_factors_others: formData.work_device_factors_others,
                     info_source: formData.info_source,
-                    info_source_others: formData.info_source_others
+                    info_source_others: formData.info_source_others,
+                    share_data_sponsor: formData.share_data_sponsor || false
                 }
             });
 
@@ -621,6 +623,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
                                 </div>
                                 {errors.info_source && <span className="text-xs text-red-500">{errors.info_source.message}</span>}
                                 {errors.info_source_others && infoSource === 'Others' && <span className="text-xs text-red-500">{errors.info_source_others.message}</span>}
+                            </div>
+
+                            <div className="flex flex-col gap-3 md:col-span-2 pt-4 border-t border-gray-100 mt-2">
+                                <label className="flex items-start gap-3 cursor-pointer p-4 rounded-lg border border-gray-200 hover:border-primary/50 hover:bg-primary/5 transition-all text-sm">
+                                    <input
+                                        type="checkbox"
+                                        {...register('share_data_sponsor')}
+                                        className="mt-0.5 size-4 accent-primary"
+                                    />
+                                    <span className="text-gray-700 leading-relaxed">
+                                        Saya bersedia membagikan data saya kepada sponsor untuk penawaran eksklusif dan informasi terkait acara.
+                                        <br />
+                                        <span className="text-xs text-gray-500 font-normal italic">(Opsional)</span>
+                                    </span>
+                                </label>
                             </div>
                         </div>
                     </section>

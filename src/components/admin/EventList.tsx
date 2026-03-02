@@ -8,12 +8,14 @@ import { useDialog } from '../ui/DialogContext';
 export const EventList: React.FC = () => {
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const { role } = useAuth();
+    const { role, loading: authLoading } = useAuth();
     const { showAlert, showConfirm } = useDialog();
 
     useEffect(() => {
-        fetchEvents();
-    }, []);
+        if (!authLoading) {
+            fetchEvents();
+        }
+    }, [role, authLoading]);
 
     const fetchEvents = async () => {
         let query = supabase
@@ -22,7 +24,14 @@ export const EventList: React.FC = () => {
             .order('created_at', { ascending: false });
 
         if (role === 'sponsor') {
-            const { data: myEvents } = await supabase.from('sponsor_events').select('event_id');
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            if (!userId) {
+                setEvents([]);
+                setLoading(false);
+                return;
+            }
+            const { data: myEvents } = await supabase.from('sponsor_events').select('event_id').eq('user_id', userId);
             const myEventIds = myEvents?.map(e => e.event_id) || [];
             if (myEventIds.length === 0) {
                 setEvents([]);

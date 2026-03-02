@@ -21,6 +21,7 @@ export const personalBaseSchema = z.object({
     work_device_factors_others: z.string().optional(),
     info_source: z.string().min(1, { message: "Pilih salah satu sumber informasi" }),
     info_source_others: z.string().optional(),
+    share_data_sponsor: z.boolean().optional(),
 });
 
 export const personalSchema = personalBaseSchema.superRefine((data, ctx) => {

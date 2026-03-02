@@ -383,7 +383,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
     };
 
     const handleExportCSV = () => {
-        const headers = ['Date', 'Name', 'Email', 'Phone', 'Domicile', 'Info Source', 'Event', 'Amount', 'Status', 'Check-in', 'Gender', 'Role', 'Instansi / Kampus', 'Jabatan / Jurusan', 'Use Mouse/Keyboard External', 'Mouse Brand', 'Factors', 'Message'];
+        const headers = ['Date', 'Name', 'Email', 'Phone', 'Domicile', 'Info Source', 'Event', 'Amount', 'Status', 'Check-in', 'Gender', 'Role', 'Instansi / Kampus', 'Jabatan / Jurusan', 'Use Mouse/Keyboard External', 'Mouse Brand', 'Factors', 'Share Data', 'Message'];
         const csvContent = [
             headers.join(','),
             ...filteredRegistrants.map(reg => {
@@ -405,6 +405,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                     reg.uses_external_peripherals ? 'YES' : 'NO',
                     `"${reg.mouse_brand?.replace(/"/g, '""') || ''}"`,
                     `"${(reg.work_device_factors?.join(', ') || '') + (reg.work_device_factors_others ? `: ${reg.work_device_factors_others}` : '')}"`,
+                    reg.share_data_sponsor ? 'YES' : 'NO',
                     `"${reg.prayer?.replace(/"/g, '""') || ''}"`
                 ];
                 return row.join(',');
@@ -440,6 +441,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
         { label: 'Perangkat External', value: selectedRegistrant.uses_external_peripherals ? 'YES' : 'NO' },
         { label: 'Mouse Brand', value: selectedRegistrant.mouse_brand || '-' },
         { label: 'Factors', value: (selectedRegistrant.work_device_factors?.join(', ') || '-') + (selectedRegistrant.work_device_factors_others ? ` (${selectedRegistrant.work_device_factors_others})` : '') },
+        { label: 'Share Data Sponsor', value: selectedRegistrant.share_data_sponsor ? 'YES' : 'NO' },
         { label: 'Message', value: selectedRegistrant.prayer || '-' },
     ] : [];
 
@@ -472,53 +474,53 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 w-full">
-                        <select
-                            className="h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white w-full sm:min-w-[220px]"
-                            value={eventId}
-                            onChange={(e) => handleEventFilterChange(e.target.value)}
-                        >
-                            <option value="all">Semua Event</option>
-                            {events.map((event) => (
-                                <option key={event.id} value={event.id}>{event.title}</option>
-                            ))}
-                        </select>
-                        <div className="relative w-full sm:w-auto">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Search name, email, event..."
-                                className="h-10 pl-10 pr-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary w-full sm:min-w-[220px]"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                    <select
+                        className="h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white w-full sm:min-w-[220px]"
+                        value={eventId}
+                        onChange={(e) => handleEventFilterChange(e.target.value)}
+                    >
+                        <option value="all">Semua Event</option>
+                        {events.map((event) => (
+                            <option key={event.id} value={event.id}>{event.title}</option>
+                        ))}
+                    </select>
+                    <div className="relative w-full sm:w-auto">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search name, email, event..."
+                            className="h-10 pl-10 pr-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary w-full sm:min-w-[220px]"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        onClick={handleExportCSV}
+                        className="h-10 flex items-center justify-center gap-2 bg-green-600 text-white px-4 rounded-lg font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
+                    >
+                        <Download size={18} />
+                        Export CSV
+                    </button>
+                    {mode === 'paid' && (
                         <button
-                            onClick={handleExportCSV}
-                            className="h-10 flex items-center justify-center gap-2 bg-green-600 text-white px-4 rounded-lg font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
+                            onClick={handleBulkResendTicket}
+                            disabled={isBulkSending || filteredRegistrants.length === 0}
+                            className="h-10 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-60"
                         >
-                            <Download size={18} />
-                            Export CSV
+                            {isBulkSending ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
+                            {isBulkSending && bulkProgress
+                                ? `Mengirim ${bulkProgress.done}/${bulkProgress.total}`
+                                : 'Bulk Send Ticket'}
                         </button>
-                        {mode === 'paid' && (
-                            <button
-                                onClick={handleBulkResendTicket}
-                                disabled={isBulkSending || filteredRegistrants.length === 0}
-                                className="h-10 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-60"
-                            >
-                                {isBulkSending ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
-                                {isBulkSending && bulkProgress
-                                    ? `Mengirim ${bulkProgress.done}/${bulkProgress.total}`
-                                    : 'Bulk Send Ticket'}
-                            </button>
-                        )}
-                        {mode === 'paid' && eventId !== 'all' && (
-                            <Link
-                                to={`/admin/dashboard?tab=scanner&eventId=${eventId}`}
-                                className="h-10 flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors whitespace-nowrap"
-                            >
-                                Buka Scanner Event Ini
-                            </Link>
-                        )}
+                    )}
+                    {mode === 'paid' && eventId !== 'all' && (
+                        <Link
+                            to={`/admin/dashboard?tab=scanner&eventId=${eventId}`}
+                            className="h-10 flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors whitespace-nowrap"
+                        >
+                            Buka Scanner Event Ini
+                        </Link>
+                    )}
                 </div>
 
                 {/* Status Filter Chips */}

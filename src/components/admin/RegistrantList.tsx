@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Loader2, Search, X, Download, Mail, CheckCheck, FileText } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { logAudit } from '../../lib/audit';
 
 type RegistrantListMode = 'transactions' | 'paid';
 
@@ -26,6 +28,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
     const [searchParams, setSearchParams] = useSearchParams();
     const eventId = searchParams.get('eventId') || 'all';
     const [filterEventName, setFilterEventName] = useState<string | null>(null);
+    const { role } = useAuth();
 
     useEffect(() => {
         fetchEvents();
@@ -382,7 +385,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
         alert(`Bulk send selesai. Berhasil: ${successCount}, Gagal: ${failedCount}.`);
     };
 
-    const handleExportCSV = () => {
+    const handleExportCSV = async () => {
         const headers = ['Date', 'Name', 'Email', 'Phone', 'Domicile', 'Info Source', 'Event', 'Amount', 'Status', 'Check-in', 'Gender', 'Role', 'Instansi / Kampus', 'Jabatan / Jurusan', 'Use Mouse/Keyboard External', 'Mouse Brand', 'Factors', 'Share Data', 'Message'];
         const csvContent = [
             headers.join(','),
@@ -421,6 +424,9 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // Audit log
+        await logAudit('EXPORT', 'registrations', undefined, { eventId, count: filteredRegistrants.length });
     };
 
     const detailItems = selectedRegistrant ? [
@@ -501,7 +507,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                         <Download size={18} />
                         Export CSV
                     </button>
-                    {mode === 'paid' && (
+                    {mode === 'paid' && role !== 'sponsor' && (
                         <button
                             onClick={handleBulkResendTicket}
                             disabled={isBulkSending || filteredRegistrants.length === 0}
@@ -649,14 +655,19 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <div className="flex flex-col gap-2 min-w-[180px]">
                                             <button
-                                                onClick={() => setSelectedRegistrant(reg)}
+                                                onClick={async () => {
+                                                    setSelectedRegistrant(reg);
+                                                    if (role === 'sponsor') {
+                                                        await logAudit('VIEW', 'registrations', reg.id, { event_id: reg.event_id });
+                                                    }
+                                                }}
                                                 className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                                             >
                                                 <FileText size={14} />
                                                 Detail
                                             </button>
 
-                                            {mode === 'paid' && (
+                                            {mode === 'paid' && role !== 'sponsor' && (
                                                 <>
                                                     <button
                                                         onClick={() => handleResendTicket(reg)}

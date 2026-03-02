@@ -1,22 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Link } from 'react-router-dom';
-import { Loader2, Plus, ExternalLink, Calendar, Edit } from 'lucide-react';
+import { Loader2, Plus, ExternalLink, Calendar, Edit, Trash2 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { useDialog } from '../ui/DialogContext';
 
 export const EventList: React.FC = () => {
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { role } = useAuth();
+    const { showAlert, showConfirm } = useDialog();
 
     useEffect(() => {
         fetchEvents();
     }, []);
 
     const fetchEvents = async () => {
-        // 1. Fetch all events
-        const { data: eventsData, error: eventsError } = await supabase
+        let query = supabase
             .from('events')
             .select('*')
             .order('created_at', { ascending: false });
+
+        if (role === 'sponsor') {
+            const { data: myEvents } = await supabase.from('sponsor_events').select('event_id');
+            const myEventIds = myEvents?.map(e => e.event_id) || [];
+            if (myEventIds.length === 0) {
+                setEvents([]);
+                setLoading(false);
+                return;
+            }
+            query = query.in('id', myEventIds);
+        }
+
+        const { data: eventsData, error: eventsError } = await query;
 
         if (eventsError) {
             console.error(eventsError);
@@ -25,9 +41,6 @@ export const EventList: React.FC = () => {
         }
 
         // 2. Fetch all registration counts grouped by event_id manually
-        // We fetch all 'event_id' from registrations to count them.
-        // Optimized: .select('event_id', { count: 'exact' }) gives total count, not grouped.
-        // So we might need to fetch all 'event_id' (lightweight) and count in JS.
         const { data: regData, error: regError } = await supabase
             .from('registrations')
             .select('event_id');
@@ -57,6 +70,19 @@ export const EventList: React.FC = () => {
         setLoading(false);
     };
 
+    const handleDelete = async (eventId: string) => {
+        const isConfirmed = await showConfirm('Are you sure you want to delete this event?');
+        if (isConfirmed) {
+            const { error } = await supabase.from('events').delete().eq('id', eventId);
+            if (error) {
+                console.error("Failed to delete", error);
+                await showAlert({ message: "Failed to delete event.", severity: "error" });
+            } else {
+                fetchEvents();
+            }
+        }
+    };
+
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
 
     const totalEvents = events.length;
@@ -71,13 +97,15 @@ export const EventList: React.FC = () => {
                     <h2 className="text-2xl font-bold text-gray-800">Events</h2>
                     <p className="text-sm text-gray-500 mt-1">Kelola jadwal event dan pantau jumlah registrasi per event.</p>
                 </div>
-                <Link
-                    to="/admin/events/create"
-                    className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors"
-                >
-                    <Plus size={20} />
-                    New Event
-                </Link>
+                {role === 'superadmin' && (
+                    <Link
+                        to="/admin/events/create"
+                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors"
+                    >
+                        <Plus size={20} />
+                        New Event
+                    </Link>
+                )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
@@ -153,9 +181,16 @@ export const EventList: React.FC = () => {
                                             <a href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700" title="View Public Page">
                                                 <ExternalLink size={16} />
                                             </a>
-                                            <Link to={`/admin/events/edit/${event.id}`} className="text-indigo-600 hover:text-indigo-900" title="Edit Event">
-                                                <Edit size={16} />
-                                            </Link>
+                                            {role === 'superadmin' && (
+                                                <>
+                                                    <Link to={`/admin/events/edit/${event.id}`} className="text-indigo-600 hover:text-indigo-900" title="Edit Event">
+                                                        <Edit size={16} />
+                                                    </Link>
+                                                    <button onClick={() => handleDelete(event.id)} className="text-red-600 hover:text-red-900" title="Delete Event">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

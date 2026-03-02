@@ -6,30 +6,33 @@ import { CreateEvent } from './components/admin/CreateEvent';
 import { EditEvent } from './components/admin/EditEvent';
 // EventList is now used inside Dashboard
 import { PublicEventPage } from './pages/PublicEventPage';
+import { DialogProvider } from './components/ui/DialogContext';
 // import { HomePage } from './pages/HomePage'; // Optional
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/e/:slug" element={<PublicEventPage />} />
+    <DialogProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/e/:slug" element={<PublicEventPage />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/login" element={<Login />} />
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<Login />} />
 
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="events" element={<Navigate to="/admin/dashboard?tab=events" replace />} />
-          <Route path="events/create" element={<CreateEvent />} />
-          <Route path="events/edit/:id" element={<EditEvent />} />
-        </Route>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="events" element={<Navigate to="/admin/dashboard?tab=events" replace />} />
+            <Route path="events/create" element={<CreateEvent />} />
+            <Route path="events/edit/:id" element={<EditEvent />} />
+          </Route>
 
-        {/* Fallback / Default */}
-        <Route path="/" element={<Navigate to="/admin/login" replace />} />
-      </Routes>
-    </Router>
+          {/* Fallback / Default */}
+          <Route path="/" element={<Navigate to="/admin/login" replace />} />
+        </Routes>
+      </Router>
+    </DialogProvider>
   );
 }
 

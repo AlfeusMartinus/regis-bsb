@@ -22,20 +22,27 @@ export const RoleManagement: React.FC = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    // Always get a fresh token to avoid expired JWT errors
+    const getValidToken = async (): Promise<string> => {
+        const { data: { session } } = await supabase.auth.refreshSession();
+        if (session?.access_token) return session.access_token;
+        // Fallback to current session if refresh fails
+        const { data: { session: current } } = await supabase.auth.getSession();
+        return current?.access_token ?? '';
+    };
+
+    const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL || 'https://xukrtfptfvvxxedluhqy.supabase.co'}/functions/v1/manage-roles`;
+
     const fetchData = async () => {
         setLoading(true);
-        // Fetch events
         const { data: eventsData } = await supabase.from('events').select('id, title').order('created_at', { ascending: false });
         setEvents(eventsData || []);
 
-        // Call Edge Function to list users (requires superadmin)
         try {
-            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://xukrtfptfvvxxedluhqy.supabase.co'}/functions/v1/manage-roles`, {
+            const token = await getValidToken();
+            const res = await fetch(EDGE_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ action: 'LIST_USERS' })
             });
             const data = await res.json();
@@ -43,7 +50,7 @@ export const RoleManagement: React.FC = () => {
                 setUsers(data.users);
             } else {
                 console.error("Failed to fetch users:", data.error);
-                alert("Gagal mengambil data user. Pastikan Anda superadmin.");
+                await showAlert({ message: "Gagal mengambil data user. Pastikan Anda superadmin.", severity: "error" });
             }
         } catch (e) {
             console.error("Error listing users", e);
@@ -59,19 +66,11 @@ export const RoleManagement: React.FC = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://xukrtfptfvvxxedluhqy.supabase.co'}/functions/v1/manage-roles`, {
+            const token = await getValidToken();
+            const res = await fetch(EDGE_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                },
-                body: JSON.stringify({
-                    action: 'CREATE_SPONSOR',
-                    email,
-                    password,
-                    assignedEvents: selectedEvents,
-                    canScan
-                })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ action: 'CREATE_SPONSOR', email, password, assignedEvents: selectedEvents, canScan })
             });
 
             const data = await res.json();
@@ -95,18 +94,11 @@ export const RoleManagement: React.FC = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://xukrtfptfvvxxedluhqy.supabase.co'}/functions/v1/manage-roles`, {
+            const token = await getValidToken();
+            const res = await fetch(EDGE_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                },
-                body: JSON.stringify({
-                    action: 'UPDATE_SPONSOR_EVENTS',
-                    targetUserId: selectedUser.id,
-                    assignedEvents: selectedEvents,
-                    canScan
-                })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ action: 'UPDATE_SPONSOR_EVENTS', targetUserId: selectedUser.id, assignedEvents: selectedEvents, canScan })
             });
 
             const data = await res.json();
@@ -132,16 +124,11 @@ export const RoleManagement: React.FC = () => {
         if (!isConfirmed) return;
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://xukrtfptfvvxxedluhqy.supabase.co'}/functions/v1/manage-roles`, {
+            const token = await getValidToken();
+            const res = await fetch(EDGE_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                },
-                body: JSON.stringify({
-                    action: 'DELETE_SPONSOR',
-                    targetUserId: user.id
-                })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ action: 'DELETE_SPONSOR', targetUserId: user.id })
             });
 
             const data = await res.json();

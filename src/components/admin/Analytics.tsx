@@ -34,8 +34,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export const Analytics: React.FC = () => {
+interface AnalyticsProps {
+    sponsorMode?: boolean;
+}
+
+export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => {
     const [loading, setLoading] = useState(true);
+    const [allTxRange, setAllTxRange] = useState<1 | 7 | 15 | 30>(7);
+    const [settledRange, setSettledRange] = useState<1 | 7 | 15 | 30>(15);
 
     // raw data
     const [registrations, setRegistrations] = useState<any[]>([]);
@@ -45,10 +51,38 @@ export const Analytics: React.FC = () => {
 
     const fetchData = async () => {
         setLoading(true);
-        const [{ data: regs }, { data: evs }] = await Promise.all([
-            supabase.from('registrations').select('id, created_at, status, amount, event_id, gender, domicile, current_status'),
-            supabase.from('events').select('id, title, is_published'),
-        ]);
+
+        // For sponsor: first get their assigned event IDs to scope the data
+        let eventFilter: string[] | null = null;
+        if (sponsorMode) {
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            if (userId) {
+                const { data: seData } = await supabase
+                    .from('sponsor_events')
+                    .select('event_id')
+                    .eq('user_id', userId);
+                eventFilter = (seData || []).map((r: any) => r.event_id);
+            }
+        }
+
+        let regsQuery = supabase.from('registrations').select('id, created_at, status, amount, event_id, gender, domicile, current_status');
+        if (eventFilter && eventFilter.length > 0) {
+            regsQuery = regsQuery.in('event_id', eventFilter);
+        } else if (sponsorMode) {
+            // No events assigned — return empty
+            setRegistrations([]);
+            setEvents([]);
+            setLoading(false);
+            return;
+        }
+
+        let eventsQuery = supabase.from('events').select('id, title, is_published');
+        if (eventFilter && eventFilter.length > 0) {
+            eventsQuery = eventsQuery.in('id', eventFilter);
+        }
+
+        const [{ data: regs }, { data: evs }] = await Promise.all([regsQuery, eventsQuery]);
         setRegistrations(regs || []);
         setEvents(evs || []);
         setLoading(false);
@@ -72,26 +106,61 @@ export const Analytics: React.FC = () => {
         { label: 'Pembayaran Lunas', value: paid.length, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
     ];
 
-    // ── 1. Daily Registrations (last 30 days) ────────────────────────────────
-    const dailyMap: Record<string, { registrations: number; revenue: number }> = {};
+    // ── 1. Trend data helpers ─────────────────────────────────────────────────
     const now = new Date();
-    for (let i = 29; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const key = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-        dailyMap[key] = { registrations: 0, revenue: 0 };
-    }
-    registrations.forEach(r => {
-        const d = new Date(r.created_at);
-        const key = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-        if (dailyMap[key]) {
-            dailyMap[key].registrations += 1;
-            if (SUCCESS.includes(r.status?.toLowerCase())) {
-                dailyMap[key].revenue += Number(r.amount) || 0;
-            }
+    const RANGE_OPTIONS: { value: 1 | 7 | 15 | 30; label: string }[] = [
+        { value: 30, label: '30 Hari' },
+        { value: 15, label: '15 Hari' },
+        { value: 7, label: '7 Hari' },
+        { value: 1, label: 'Hari Ini' },
+    ];
+
+    const buildKeys = (range: 1 | 7 | 15 | 30) => {
+        if (range === 1) {
+            return Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
         }
+        return Array.from({ length: range }, (_, i) => {
+            const d = new Date(now);
+            d.setDate(d.getDate() - (range - 1 - i));
+            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+        });
+    };
+    const getKey = (dateStr: string, range: 1 | 7 | 15 | 30) => {
+        const d = new Date(dateStr);
+        if (range === 1) return `${String(d.getHours()).padStart(2, '0')}:00`;
+        return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+    };
+    const xInterval = (range: 1 | 7 | 15 | 30) =>
+        range === 30 ? 4 : range === 15 ? 2 : range === 7 ? 0 : 2;
+
+    // All Transactions chart data
+    const allTxKeys = buildKeys(allTxRange);
+    const allTxMap: Record<string, { total: number; pending: number; failed: number }> = {};
+    allTxKeys.forEach(k => { allTxMap[k] = { total: 0, pending: 0, failed: 0 }; });
+    registrations.forEach(r => {
+        const k = getKey(r.created_at, allTxRange);
+        if (!allTxMap[k]) return;
+        allTxMap[k].total += 1;
+        const s = r.status?.toLowerCase() || 'pending';
+        if (s === 'pending') allTxMap[k].pending += 1;
+        else if (['failed', 'expired'].includes(s)) allTxMap[k].failed += 1;
     });
-    const dailyData = Object.entries(dailyMap).map(([date, v]) => ({ date, ...v }));
+    const allTxData = Object.entries(allTxMap).map(([date, v]) => ({ date, ...v }));
+
+    // Settlement chart data
+    const settledKeys = buildKeys(settledRange);
+    const settledMap: Record<string, { registrants: number; revenue: number }> = {};
+    settledKeys.forEach(k => { settledMap[k] = { registrants: 0, revenue: 0 }; });
+    paid.forEach(r => {
+        const k = getKey(r.created_at, settledRange);
+        if (!settledMap[k]) return;
+        settledMap[k].registrants += 1;
+        settledMap[k].revenue += Number(r.amount) || 0;
+    });
+    const settledData = Object.entries(settledMap).map(([date, v]) => ({ date, ...v }));
+
+    // Shared dropdown style
+    const selectCls = 'text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer';
 
     // ── 2. Payment Status Donut ──────────────────────────────────────────────
     const statusData = [
@@ -170,34 +239,92 @@ export const Analytics: React.FC = () => {
                 ))}
             </div>
 
-            {/* Area Chart — Daily Trend */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                <h3 className="font-semibold text-gray-800 mb-4">Tren Registrasi Harian (30 hari terakhir)</h3>
-                <ResponsiveContainer width="100%" height={260}>
-                    <AreaChart data={dailyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                        <defs>
-                            <linearGradient id="gradReg" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="gradRev" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} interval={4} />
-                        <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickLine={false} axisLine={false}
-                            tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Area yAxisId="left" type="monotone" dataKey="registrations" name="Registrasi"
-                            stroke="#6366f1" fill="url(#gradReg)" strokeWidth={2} dot={false} />
-                        <Area yAxisId="right" type="monotone" dataKey="revenue" name="Revenue (Rp)"
-                            stroke="#10b981" fill="url(#gradRev)" strokeWidth={2} dot={false} />
-                    </AreaChart>
-                </ResponsiveContainer>
+            {/* Area Charts — split: All Transactions vs Settlement */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                {/* All Transactions */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 className="font-semibold text-gray-800">Tren Transaksi</h3>
+                            <p className="text-xs text-gray-500 mt-0.5">Semua transaksi masuk — termasuk pending &amp; gagal</p>
+                        </div>
+                        <select
+                            value={allTxRange}
+                            onChange={e => setAllTxRange(Number(e.target.value) as 1 | 7 | 15 | 30)}
+                            className={selectCls}
+                        >
+                            {RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                    </div>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart data={allTxData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                            <defs>
+                                <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="gradPending" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="gradFailed" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} interval={xInterval(allTxRange)} />
+                            <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            <Area type="monotone" dataKey="total" name="Total" stroke="#6366f1" fill="url(#gradTotal)" strokeWidth={2} dot={false} />
+                            <Area type="monotone" dataKey="pending" name="Pending" stroke="#f59e0b" fill="url(#gradPending)" strokeWidth={1.5} dot={false} />
+                            <Area type="monotone" dataKey="failed" name="Gagal" stroke="#ef4444" fill="url(#gradFailed)" strokeWidth={1.5} dot={false} />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Settlement Only */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 className="font-semibold text-gray-800">Tren Registrant Lunas</h3>
+                            <p className="text-xs text-gray-500 mt-0.5">Hanya transaksi settlement / paid — termasuk revenue</p>
+                        </div>
+                        <select
+                            value={settledRange}
+                            onChange={e => setSettledRange(Number(e.target.value) as 1 | 7 | 15 | 30)}
+                            className={selectCls}
+                        >
+                            {RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                    </div>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart data={settledData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                            <defs>
+                                <linearGradient id="gradSettled" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} interval={xInterval(settledRange)} />
+                            <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickLine={false} axisLine={false}
+                                tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            <Area yAxisId="left" type="monotone" dataKey="registrants" name="Registrants" stroke="#10b981" fill="url(#gradSettled)" strokeWidth={2} dot={false} />
+                            <Area yAxisId="right" type="monotone" dataKey="revenue" name="Revenue (Rp)" stroke="#6366f1" fill="url(#gradRevenue)" strokeWidth={1.5} dot={false} />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
             </div>
 
             {/* Row: Per Event Bar + Status Donut */}

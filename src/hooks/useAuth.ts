@@ -6,6 +6,7 @@ export function useAuth() {
     const [session, setSession] = useState<Session | null>(null);
     const [role, setRole] = useState<'superadmin' | 'sponsor' | null>(null);
     const [canScan, setCanScan] = useState<boolean>(false);
+    const [canViewAnalytics, setCanViewAnalytics] = useState<boolean>(false);
     const [email, setEmail] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -44,16 +45,19 @@ export function useAuth() {
             // Using 'user_role' instead to prevent Database errors (401/500 role does not exist).
             const userRole = decoded.user_role || decoded.app_metadata?.user_role || null;
             const userCanScan = decoded.can_scan || decoded.app_metadata?.can_scan || false;
+            const userCanViewAnalytics = decoded.can_view_analytics || decoded.app_metadata?.can_view_analytics || false;
             setRole(userRole as 'superadmin' | 'sponsor' | null);
             setCanScan(!!userCanScan);
+            setCanViewAnalytics(!!userCanViewAnalytics);
             setEmail(currentSession.user?.email || null);
         } catch (e) {
             console.error("Error decoding JWT for role:", e);
             setRole(null);
             setCanScan(false);
+            setCanViewAnalytics(false);
             setEmail(null);
         }
     };
 
-    return { session, role, canScan, email, loading };
+    return { session, role, canScan, canViewAnalytics, email, loading };
 }

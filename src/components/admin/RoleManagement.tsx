@@ -19,6 +19,7 @@ export const RoleManagement: React.FC = () => {
     const [password, setPassword] = useState('');
     const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
     const [canScan, setCanScan] = useState(false);
+    const [canViewAnalytics, setCanViewAnalytics] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -70,7 +71,7 @@ export const RoleManagement: React.FC = () => {
             const res = await fetch(EDGE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'CREATE_SPONSOR', email, password, assignedEvents: selectedEvents, canScan })
+                body: JSON.stringify({ action: 'CREATE_SPONSOR', email, password, assignedEvents: selectedEvents, canScan, canViewAnalytics })
             });
 
             const data = await res.json();
@@ -98,7 +99,7 @@ export const RoleManagement: React.FC = () => {
             const res = await fetch(EDGE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'UPDATE_SPONSOR_EVENTS', targetUserId: selectedUser.id, assignedEvents: selectedEvents, canScan })
+                body: JSON.stringify({ action: 'UPDATE_SPONSOR_EVENTS', targetUserId: selectedUser.id, assignedEvents: selectedEvents, canScan, canViewAnalytics })
             });
 
             const data = await res.json();
@@ -149,6 +150,7 @@ export const RoleManagement: React.FC = () => {
         setPassword('');
         setSelectedEvents([]);
         setCanScan(false);
+        setCanViewAnalytics(false);
         setShowPassword(false);
     };
 
@@ -162,6 +164,7 @@ export const RoleManagement: React.FC = () => {
         setSelectedUser(user);
         setSelectedEvents(user.assigned_events?.map((e: any) => e.event_id) || []);
         setCanScan(user.can_scan || false);
+        setCanViewAnalytics(user.can_view_analytics || false);
         setIsEditModalOpen(true);
     };
 
@@ -219,6 +222,11 @@ export const RoleManagement: React.FC = () => {
                                                 Akses Scanner
                                             </span>
                                         )}
+                                        {user.can_view_analytics && (
+                                            <span className="bg-violet-100 text-violet-800 text-xs px-2 py-1 rounded w-fit">
+                                                Akses Analytics
+                                            </span>
+                                        )}
                                         {user.role === 'superadmin' ? (
                                             <span className="text-sm text-gray-500 italic">Semua Event</span>
                                         ) : (
@@ -230,7 +238,7 @@ export const RoleManagement: React.FC = () => {
                                                         </span>
                                                     ))
                                                 ) : (
-                                                    <span className="text-sm text-red-500 italic">Belum ada askes event</span>
+                                                    <span className="text-sm text-red-500 italic">Belum ada akses event</span>
                                                 )}
                                             </div>
                                         )}
@@ -306,6 +314,12 @@ export const RoleManagement: React.FC = () => {
                                 </label>
                             </div>
                             <div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" checked={canViewAnalytics} onChange={(e) => setCanViewAnalytics(e.target.checked)} className="rounded text-primary focus:ring-primary w-4 h-4" />
+                                    <span className="text-sm font-medium text-gray-700">Izinkan Akses Tab Analytics</span>
+                                </label>
+                            </div>
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Akses Event Awal (Opsional)</label>
                                 <div className="max-h-48 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
                                     {events.map(ev => (
@@ -344,6 +358,12 @@ export const RoleManagement: React.FC = () => {
                                 <label className="flex items-center gap-2 cursor-pointer pt-1">
                                     <input type="checkbox" checked={canScan} onChange={(e) => setCanScan(e.target.checked)} className="rounded text-primary focus:ring-primary w-4 h-4" />
                                     <span className="text-sm font-medium text-gray-700">Izinkan Akses Tab Scanner</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" checked={canViewAnalytics} onChange={(e) => setCanViewAnalytics(e.target.checked)} className="rounded text-primary focus:ring-primary w-4 h-4" />
+                                    <span className="text-sm font-medium text-gray-700">Izinkan Akses Tab Analytics</span>
                                 </label>
                             </div>
                             <div>

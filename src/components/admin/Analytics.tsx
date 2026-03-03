@@ -34,10 +34,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export const Analytics: React.FC = () => {
+interface AnalyticsProps {
+    sponsorMode?: boolean;
+}
+
+export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => {
     const [loading, setLoading] = useState(true);
-    const [allTxRange, setAllTxRange] = useState<1 | 7 | 15 | 30>(30);
-    const [settledRange, setSettledRange] = useState<1 | 7 | 15 | 30>(30);
+    const [allTxRange, setAllTxRange] = useState<1 | 7 | 15 | 30>(7);
+    const [settledRange, setSettledRange] = useState<1 | 7 | 15 | 30>(15);
 
     // raw data
     const [registrations, setRegistrations] = useState<any[]>([]);
@@ -47,10 +51,38 @@ export const Analytics: React.FC = () => {
 
     const fetchData = async () => {
         setLoading(true);
-        const [{ data: regs }, { data: evs }] = await Promise.all([
-            supabase.from('registrations').select('id, created_at, status, amount, event_id, gender, domicile, current_status'),
-            supabase.from('events').select('id, title, is_published'),
-        ]);
+
+        // For sponsor: first get their assigned event IDs to scope the data
+        let eventFilter: string[] | null = null;
+        if (sponsorMode) {
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            if (userId) {
+                const { data: seData } = await supabase
+                    .from('sponsor_events')
+                    .select('event_id')
+                    .eq('user_id', userId);
+                eventFilter = (seData || []).map((r: any) => r.event_id);
+            }
+        }
+
+        let regsQuery = supabase.from('registrations').select('id, created_at, status, amount, event_id, gender, domicile, current_status');
+        if (eventFilter && eventFilter.length > 0) {
+            regsQuery = regsQuery.in('event_id', eventFilter);
+        } else if (sponsorMode) {
+            // No events assigned — return empty
+            setRegistrations([]);
+            setEvents([]);
+            setLoading(false);
+            return;
+        }
+
+        let eventsQuery = supabase.from('events').select('id, title, is_published');
+        if (eventFilter && eventFilter.length > 0) {
+            eventsQuery = eventsQuery.in('id', eventFilter);
+        }
+
+        const [{ data: regs }, { data: evs }] = await Promise.all([regsQuery, eventsQuery]);
         setRegistrations(regs || []);
         setEvents(evs || []);
         setLoading(false);

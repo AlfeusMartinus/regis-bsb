@@ -4,6 +4,7 @@ import { Loader2, Search, X, Download, Mail, CheckCheck, FileText } from 'lucide
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { logAudit } from '../../lib/audit';
+import { checkAndExpireTransactions } from './WAReminder';
 
 type RegistrantListMode = 'transactions' | 'paid';
 
@@ -118,6 +119,8 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
 
     const fetchRegistrants = async () => {
         setLoading(true);
+        // Auto-expire stale pending transactions before fetching
+        await checkAndExpireTransactions();
         // Fetch registrations with event details
         let query = supabase
             .from('registrations')
@@ -200,7 +203,8 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
         { id: 'all', label: 'All Status' },
         { id: 'success', label: 'Success' }, // paid, settlement, success
         { id: 'pending', label: 'Pending' },
-        { id: 'failed', label: 'Failed' },   // failed, expired
+        { id: 'expired', label: 'Expired' },
+        { id: 'failed', label: 'Failed' },
     ];
 
     const checkinOptions = [
@@ -240,8 +244,11 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
         if (statusFilter === 'pending') {
             return status === 'pending';
         }
+        if (statusFilter === 'expired') {
+            return status === 'expired';
+        }
         if (statusFilter === 'failed') {
-            return ['failed', 'expired'].includes(status);
+            return status === 'failed';
         }
         return true;
     });

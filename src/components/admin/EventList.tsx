@@ -118,7 +118,6 @@ export const EventList: React.FC = () => {
     const totalEvents = events.length;
     const publishedEvents = events.filter((event) => event.is_published).length;
     const draftEvents = totalEvents - publishedEvents;
-    const totalRegistrants = events.reduce((sum, event) => sum + (event.registrant_count || 0), 0);
 
     return (
         <div>
@@ -138,7 +137,7 @@ export const EventList: React.FC = () => {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-5">
                 <div className="border border-gray-200 rounded-lg px-4 py-3 bg-white">
                     <p className="text-xs text-gray-500">Total Event</p>
                     <p className="text-xl font-bold text-gray-900">{totalEvents}</p>
@@ -150,10 +149,6 @@ export const EventList: React.FC = () => {
                 <div className="border border-gray-200 rounded-lg px-4 py-3 bg-white">
                     <p className="text-xs text-gray-500">Draft</p>
                     <p className="text-xl font-bold text-amber-700">{draftEvents}</p>
-                </div>
-                <div className="border border-gray-200 rounded-lg px-4 py-3 bg-white">
-                    <p className="text-xs text-gray-500">Total Registrants</p>
-                    <p className="text-xl font-bold text-blue-700">{totalRegistrants}</p>
                 </div>
             </div>
 

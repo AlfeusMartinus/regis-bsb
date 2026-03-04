@@ -204,6 +204,36 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
 
                 if (window.loadJokulCheckout) {
                     window.loadJokulCheckout(data.link);
+
+                    // Watch for the Doku popup's "current-time" ping — this fires
+                    // exactly when the checkout popup has fully loaded. We use it
+                    // as the signal to hide our loading overlay.
+                    let perfObserver: PerformanceObserver | null = null;
+                    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+                    const stopLoading = () => {
+                        setIsLoading(false);
+                        perfObserver?.disconnect();
+                        if (fallbackTimer) clearTimeout(fallbackTimer);
+                    };
+
+                    try {
+                        perfObserver = new PerformanceObserver((list) => {
+                            for (const entry of list.getEntries()) {
+                                if (entry.name.includes('checkout.doku.com/checkout/v2/payment/current-time')) {
+                                    stopLoading();
+                                    return;
+                                }
+                            }
+                        });
+                        perfObserver.observe({ entryTypes: ['resource'] });
+                    } catch {
+                        // PerformanceObserver not supported — fall back to timeout
+                    }
+
+                    // Safety fallback: stop loading after 15s regardless
+                    fallbackTimer = setTimeout(stopLoading, 15000);
+
                 } else {
                     window.location.href = data.link;
                 }

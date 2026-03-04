@@ -6,7 +6,8 @@ import { RegistrationOverview } from './RegistrationOverview';
 import { RoleManagement } from './RoleManagement';
 import { AuditLogs } from './AuditLogs';
 import { Analytics } from './Analytics';
-import { Calendar, Users, QrCode, ShieldCheck, History, BarChart2 } from 'lucide-react';
+import { WAReminder } from './WAReminder';
+import { Calendar, Users, QrCode, ShieldCheck, History, BarChart2, MessageCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -106,6 +107,26 @@ export const Dashboard: React.FC = () => {
                         Registrants
                     </button>
 
+                    {role === 'superadmin' && (
+                        <button
+                            onClick={() => setTab('wa-reminder')}
+                            className={`
+                                group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
+                                ${activeTab === 'wa-reminder'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
+                            `}
+                        >
+                            <MessageCircle
+                                className={`
+                                    mr-2 h-4 w-4
+                                    ${activeTab === 'wa-reminder' ? 'text-green-600' : 'text-gray-400 group-hover:text-gray-500'}
+                                `}
+                            />
+                            WA Reminder
+                        </button>
+                    )}
+
                     {(role === 'superadmin' || canScan) && (
                         <button
                             onClick={() => setTab('scanner')}
@@ -175,6 +196,7 @@ export const Dashboard: React.FC = () => {
                 {activeTab === 'events' && <EventList />}
                 {activeTab === 'transactions' && <RegistrantList mode="transactions" />}
                 {activeTab === 'paid-registrants' && <RegistrantList mode="paid" />}
+                {activeTab === 'wa-reminder' && role === 'superadmin' && <WAReminder />}
                 {activeTab === 'scanner' && (role === 'superadmin' || canScan) && <Scanner />}
                 {activeTab === 'roles' && role === 'superadmin' && <RoleManagement />}
                 {activeTab === 'audit' && role === 'superadmin' && <AuditLogs />}

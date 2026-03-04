@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Loader2, Search, X, Download, Mail, CheckCheck, FileText } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Loader2, Search, X, Download, Mail, CheckCheck, Undo2, FileText } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { logAudit } from '../../lib/audit';
 import { checkAndExpireTransactions } from './WAReminder';
@@ -319,15 +319,31 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                 .update({ is_attended: true })
                 .eq('id', registrationId);
 
-            if (error) {
-                throw error;
-            }
-
+            if (error) throw error;
             await fetchRegistrants();
-            alert('Check-in manual berhasil disimpan.');
         } catch (error: any) {
             console.error('Failed manual check-in:', error);
             alert(error?.message || 'Gagal melakukan check-in manual.');
+        } finally {
+            setManualCheckinId(null);
+        }
+    };
+
+    const handleUndoCheckin = async (registrationId: string) => {
+        const confirmed = window.confirm('Batalkan check-in peserta ini? Status kehadiran akan dikembalikan ke belum hadir.');
+        if (!confirmed) return;
+        setManualCheckinId(registrationId);
+        try {
+            const { error } = await supabase
+                .from('registrations')
+                .update({ is_attended: false })
+                .eq('id', registrationId);
+
+            if (error) throw error;
+            await fetchRegistrants();
+        } catch (error: any) {
+            console.error('Failed undo check-in:', error);
+            alert(error?.message || 'Gagal membatalkan check-in.');
         } finally {
             setManualCheckinId(null);
         }
@@ -555,14 +571,6 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                                 : 'Bulk Send Ticket'}
                         </button>
                     )}
-                    {mode === 'paid' && eventId !== 'all' && (
-                        <Link
-                            to={`/admin/dashboard?tab=scanner&eventId=${eventId}`}
-                            className="h-10 flex items-center gap-2 bg-emerald-600 text-white px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors whitespace-nowrap"
-                        >
-                            Buka Scanner Event Ini
-                        </Link>
-                    )}
                 </div>
 
                 {/* Status Filter Chips */}
@@ -723,18 +731,33 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                                                         Kirim Tiket
                                                     </button>
 
-                                                    <button
-                                                        onClick={() => handleManualCheckin(reg.id)}
-                                                        disabled={!!reg.is_attended || manualCheckinId === reg.id}
-                                                        className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-                                                    >
-                                                        {manualCheckinId === reg.id ? (
-                                                            <Loader2 size={14} className="animate-spin" />
-                                                        ) : (
-                                                            <CheckCheck size={14} />
-                                                        )}
-                                                        {reg.is_attended ? 'Sudah Check-in' : 'Check-in Manual'}
-                                                    </button>
+                                                    {reg.is_attended ? (
+                                                        <button
+                                                            onClick={() => handleUndoCheckin(reg.id)}
+                                                            disabled={manualCheckinId === reg.id}
+                                                            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-60"
+                                                        >
+                                                            {manualCheckinId === reg.id ? (
+                                                                <Loader2 size={14} className="animate-spin" />
+                                                            ) : (
+                                                                <Undo2 size={14} />
+                                                            )}
+                                                            Batalkan Check-in
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleManualCheckin(reg.id)}
+                                                            disabled={manualCheckinId === reg.id}
+                                                            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                                                        >
+                                                            {manualCheckinId === reg.id ? (
+                                                                <Loader2 size={14} className="animate-spin" />
+                                                            ) : (
+                                                                <CheckCheck size={14} />
+                                                            )}
+                                                            Check-in Manual
+                                                        </button>
+                                                    )}
                                                 </>
                                             )}
                                         </div>

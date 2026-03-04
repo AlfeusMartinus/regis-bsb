@@ -41,8 +41,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Date and Time Formatting
         const eventDateObj = date_time ? new Date(date_time) : new Date();
         const endDateObj = new Date(eventDateObj.getTime() + 2 * 60 * 60 * 1000); // add 2 hours
-        const dateStr = eventDateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        const timeStr = eventDateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
+        const dateStr = eventDateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+        const timeStr = eventDateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + " WIB";
 
         // Generate ICS contents
         const formatDateForIcs = (date: Date) => {

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { RegistrantList } from './RegistrantList';
+import { Scanner } from './Scanner';
 import {
     Loader2, ArrowLeft, Calendar, MapPin, ExternalLink,
-    Users, DollarSign, Clock, Globe, FileText, CheckCircle,
+    Users, DollarSign, Clock, Globe, FileText, CheckCircle, QrCode,
 } from 'lucide-react';
 
 const SUCCESS_STATUSES = ['paid', 'settlement', 'success'];
@@ -16,9 +17,14 @@ const currency = (v: number) =>
 export const EventDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { role, loading: authLoading } = useAuth();
+    const [searchParams] = useSearchParams();
+    const { role, canScan, loading: authLoading } = useAuth();
 
-    const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'paid-registrants'>('info');
+    const canAccessScanner = role === 'superadmin' || canScan;
+
+    type TabType = 'info' | 'transactions' | 'paid-registrants' | 'scanner';
+    const initialTab = (searchParams.get('tab') as TabType) || 'info';
+    const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [event, setEvent] = useState<any>(null);
     const [registrants, setRegistrants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -170,28 +176,33 @@ export const EventDetail: React.FC = () => {
 
             {/* Tab Navigation */}
             <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
-                <nav className="flex gap-2">
+                <nav className="flex flex-wrap gap-2">
                     <button
                         onClick={() => setActiveTab('info')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'info' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                            }`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'info' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
                     >
                         <FileText size={15} /> Info Event
                     </button>
                     <button
                         onClick={() => setActiveTab('transactions')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'transactions' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                            }`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'transactions' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
                     >
                         <Users size={15} /> Data Transaksi ({registrants.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('paid-registrants')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'paid-registrants' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                            }`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'paid-registrants' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
                     >
                         <CheckCircle size={15} /> Registrants Lunas ({paid.length})
                     </button>
+                    {canAccessScanner && (
+                        <button
+                            onClick={() => setActiveTab('scanner')}
+                            className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'scanner' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                        >
+                            <QrCode size={15} /> Scanner Check-in
+                        </button>
+                    )}
                 </nav>
             </div>
 
@@ -254,6 +265,11 @@ export const EventDetail: React.FC = () => {
                 {/* ── Registrants Lunas Tab ─────────────────────────────────── */}
                 {activeTab === 'paid-registrants' && (
                     <RegistrantList mode="paid" fixedEventId={id} />
+                )}
+
+                {/* ── Scanner Tab ───────────────────────────────────────────── */}
+                {activeTab === 'scanner' && canAccessScanner && (
+                    <Scanner fixedEventId={id} />
                 )}
             </div>
         </div>

@@ -1,18 +1,17 @@
 import React from 'react';
 import { EventList } from './EventList';
-import { Scanner } from './Scanner';
 import { RegistrationOverview } from './RegistrationOverview';
 import { RoleManagement } from './RoleManagement';
 import { AuditLogs } from './AuditLogs';
 import { Analytics } from './Analytics';
 import { WAReminder } from './WAReminder';
-import { Calendar, QrCode, ShieldCheck, History, BarChart2, MessageCircle } from 'lucide-react';
+import { Calendar, ShieldCheck, History, BarChart2, MessageCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 export const Dashboard: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const { role, canScan, canViewAnalytics, loading } = useAuth();
+    const { role, canViewAnalytics, loading } = useAuth();
     // Get tab from URL or default to 'events'
     const rawTab = searchParams.get('tab') || 'events';
     const activeTab = rawTab === 'registrants' ? 'transactions' : rawTab;
@@ -91,26 +90,6 @@ export const Dashboard: React.FC = () => {
                         </button>
                     )}
 
-                    {(role === 'superadmin' || canScan) && (
-                        <button
-                            onClick={() => setTab('scanner')}
-                            className={`
-                                group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                                ${activeTab === 'scanner'
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                            `}
-                        >
-                            <QrCode
-                                className={`
-                                    mr-2 h-4 w-4
-                                    ${activeTab === 'scanner' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
-                                `}
-                            />
-                            Scanner
-                        </button>
-                    )}
-
                     {role === 'superadmin' && (
                         <>
                             <button
@@ -159,7 +138,6 @@ export const Dashboard: React.FC = () => {
                 )}
                 {activeTab === 'events' && <EventList />}
                 {activeTab === 'wa-reminder' && role === 'superadmin' && <WAReminder />}
-                {activeTab === 'scanner' && (role === 'superadmin' || canScan) && <Scanner />}
                 {activeTab === 'roles' && role === 'superadmin' && <RoleManagement />}
                 {activeTab === 'audit' && role === 'superadmin' && <AuditLogs />}
             </div>

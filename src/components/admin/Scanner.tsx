@@ -10,7 +10,11 @@ type ScanResult = {
     details?: any;
 };
 
-export const Scanner: React.FC = () => {
+type ScannerProps = {
+    fixedEventId?: string;
+};
+
+export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
     const readerId = 'scanner-reader';
     const [scanResult, setScanResult] = useState<ScanResult>({ status: 'idle', message: 'Tunggu scan...' });
     const [isProcessing, setIsProcessing] = useState(false);
@@ -78,14 +82,18 @@ export const Scanner: React.FC = () => {
 
         setEvents(data || []);
 
-        const requestedEventId = searchParams.get('eventId');
-        const hasRequestedEvent = !!requestedEventId && (data || []).some((event) => event.id === requestedEventId);
+        if (fixedEventId) {
+            setSelectedEventId(fixedEventId);
+        } else {
+            const requestedEventId = searchParams.get('eventId');
+            const hasRequestedEvent = !!requestedEventId && (data || []).some((event) => event.id === requestedEventId);
 
-        if (!selectedEventId) {
-            if (hasRequestedEvent && requestedEventId) {
-                setSelectedEventId(requestedEventId);
-            } else if (data?.[0]?.id) {
-                setSelectedEventId(data[0].id);
+            if (!selectedEventId) {
+                if (hasRequestedEvent && requestedEventId) {
+                    setSelectedEventId(requestedEventId);
+                } else if (data?.[0]?.id) {
+                    setSelectedEventId(data[0].id);
+                }
             }
         }
         setLoadingEvents(false);
@@ -481,22 +489,24 @@ export const Scanner: React.FC = () => {
                 <p className="text-gray-500 mt-1">Pilih event terlebih dahulu, lalu scan QR melalui kamera atau upload gambar tiket.</p>
 
                 <div className="mt-4 grid grid-cols-1 lg:grid-cols-4 gap-3">
-                    <div className="lg:col-span-2">
-                        <label className="text-sm font-medium text-gray-700">Event</label>
-                        <select
-                            className="mt-1 w-full px-3 py-2 border rounded-lg bg-white"
-                            value={selectedEventId}
-                            onChange={(e) => setSelectedEventId(e.target.value)}
-                            disabled={loadingEvents}
-                        >
-                            <option value="">Pilih Event</option>
-                            {events.filter((event) => event?.id).map((event) => (
-                                <option key={event.id} value={event.id}>
-                                    {event.title || 'Untitled Event'}{event.date_time ? ` • ${new Date(event.date_time).toLocaleDateString('id-ID')}` : ''}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    {!fixedEventId && (
+                        <div className="lg:col-span-2">
+                            <label className="text-sm font-medium text-gray-700">Event</label>
+                            <select
+                                className="mt-1 w-full px-3 py-2 border rounded-lg bg-white"
+                                value={selectedEventId}
+                                onChange={(e) => setSelectedEventId(e.target.value)}
+                                disabled={loadingEvents}
+                            >
+                                <option value="">Pilih Event</option>
+                                {events.filter((event) => event?.id).map((event) => (
+                                    <option key={event.id} value={event.id}>
+                                        {event.title || 'Untitled Event'}{event.date_time ? ` • ${new Date(event.date_time).toLocaleDateString('id-ID')}` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div className="border border-gray-200 rounded-lg p-3">
                         <p className="text-xs text-gray-500">Peserta Lunas</p>
@@ -514,7 +524,9 @@ export const Scanner: React.FC = () => {
                     </span>
                     {selectedEventId && (
                         <Link
-                            to={`/admin/dashboard?tab=paid-registrants&eventId=${selectedEventId}`}
+                            to={fixedEventId
+                                ? `/admin/events/${fixedEventId}?tab=paid-registrants`
+                                : `/admin/dashboard?tab=paid-registrants&eventId=${selectedEventId}`}
                             className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200"
                         >
                             Lihat Data Registrants Event Ini

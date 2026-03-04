@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
 import QRCode from 'qrcode';
 
+const WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/Bi6smJ5bsKJ7O21S03rbe8?mode=gi_t';
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ message: 'Method Not Allowed' });
@@ -122,6 +124,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         </div>
                         <p style="margin: 16px 0 0 0; font-size: 13px; color: #6b7280; line-height: 1.5;">
                             Silakan tunjukkan QR code ini di meja registrasi saat menghadiri acara.
+                        </p>
+                    </div>
+
+                    <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                        <p style="margin: 0 0 8px 0; color: #065f46; font-size: 16px; font-weight: bold;">
+                            📲 Gabung Grup WhatsApp Peserta
+                        </p>
+                        <p style="margin: 0 0 14px 0; color: #065f46; font-size: 14px; line-height: 1.6;">
+                            Untuk update informasi terbaru seputar acara, silakan bergabung ke grup WhatsApp berikut:
+                        </p>
+                        <a href="${WHATSAPP_GROUP_URL}" style="display: inline-block; padding: 10px 16px; background-color: #059669; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold;">
+                            Join Grup WhatsApp
+                        </a>
+                        <p style="margin: 12px 0 0 0; color: #047857; font-size: 12px; word-break: break-all;">
+                            ${WHATSAPP_GROUP_URL}
                         </p>
                     </div>
 

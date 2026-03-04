@@ -10,11 +10,12 @@ type RegistrantListMode = 'transactions' | 'paid';
 
 interface RegistrantListProps {
     mode?: RegistrantListMode;
+    fixedEventId?: string; // when set, locks to this event and hides the event filter
 }
 
 const SUCCESS_STATUSES = ['paid', 'settlement', 'success'];
 
-export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transactions' }) => {
+export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transactions', fixedEventId }) => {
     const [registrants, setRegistrants] = useState<any[]>([]);
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,7 +28,8 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
     const [searchParams, setSearchParams] = useSearchParams();
-    const eventId = searchParams.get('eventId') || 'all';
+    // fixedEventId overrides URL param — used when embedded inside EventDetail
+    const eventId = fixedEventId || searchParams.get('eventId') || 'all';
     const [filterEventName, setFilterEventName] = useState<string | null>(null);
     const { role, loading: authLoading } = useAuth();
 
@@ -497,7 +499,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                             ? 'Pantau status pembayaran dan nilai transaksi per event.'
                             : 'Kelola peserta untuk kebutuhan check-in event.'}
                     </p>
-                    {filterEventName && (
+                    {filterEventName && !fixedEventId && (
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium max-w-full">
                             <span className="truncate">Event: {filterEventName}</span>
                             <button
@@ -511,30 +513,32 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 w-full">
-                    <select
-                        className="h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white w-full sm:min-w-[220px]"
-                        value={eventId}
-                        onChange={(e) => handleEventFilterChange(e.target.value)}
-                    >
-                        <option value="all">Semua Event</option>
-                        {events.map((event) => (
-                            <option key={event.id} value={event.id}>{event.title}</option>
-                        ))}
-                    </select>
-                    <div className="relative w-full sm:w-auto">
+                <div className="flex flex-wrap items-center gap-2">
+                    {!fixedEventId && (
+                        <select
+                            className="h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white w-full sm:min-w-[220px]"
+                            value={eventId}
+                            onChange={(e) => handleEventFilterChange(e.target.value)}
+                        >
+                            <option value="all">Semua Event</option>
+                            {events.map((event) => (
+                                <option key={event.id} value={event.id}>{event.title}</option>
+                            ))}
+                        </select>
+                    )}
+                    <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                         <input
                             type="text"
                             placeholder="Search name, email, event..."
-                            className="h-10 pl-10 pr-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary w-full sm:min-w-[220px]"
+                            className="h-10 pl-10 pr-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-w-[220px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                     <button
                         onClick={handleExportCSV}
-                        className="h-10 flex items-center justify-center gap-2 bg-green-600 text-white px-4 rounded-lg font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
+                        className="h-10 flex items-center gap-2 bg-green-600 text-white px-4 rounded-lg font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
                     >
                         <Download size={18} />
                         Export CSV
@@ -543,7 +547,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                         <button
                             onClick={handleBulkResendTicket}
                             disabled={isBulkSending || filteredRegistrants.length === 0}
-                            className="h-10 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-60"
+                            className="h-10 flex items-center gap-2 bg-blue-600 text-white px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-60"
                         >
                             {isBulkSending ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
                             {isBulkSending && bulkProgress
@@ -554,7 +558,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                     {mode === 'paid' && eventId !== 'all' && (
                         <Link
                             to={`/admin/dashboard?tab=scanner&eventId=${eventId}`}
-                            className="h-10 flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors whitespace-nowrap"
+                            className="h-10 flex items-center gap-2 bg-emerald-600 text-white px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors whitespace-nowrap"
                         >
                             Buka Scanner Event Ini
                         </Link>
@@ -641,11 +645,14 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Event</th>
+                            {!fixedEventId && (
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Event</th>
+                            )}
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Amount</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Check-in</th>
+                            {mode === 'paid' && (
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Check-in</th>
+                            )}
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
                         </tr>
                     </thead>
@@ -660,17 +667,17 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                             paginatedRegistrants.map((reg) => (
                                 <tr key={reg.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {reg.created_at ? new Date(reg.created_at).toLocaleString() : '-'}
+                                        {reg.created_at ? new Date(reg.created_at).toLocaleDateString('id-ID') : '-'}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {reg.name}
+                                    <td className="px-6 py-4">
+                                        <p className="text-sm font-medium text-gray-900">{reg.name}</p>
+                                        <p className="text-xs text-gray-500">{reg.email}</p>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {reg.email}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        {reg.events?.title || '-'}
-                                    </td>
+                                    {!fixedEventId && (
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                            {reg.events?.title || '-'}
+                                        </td>
+                                    )}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                         Rp {reg.amount?.toLocaleString()}
                                     </td>
@@ -679,11 +686,13 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                                             {reg.status || 'Pending'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getCheckinColor(!!reg.is_attended)}`}>
-                                            {reg.is_attended ? 'Checked-in' : 'Belum'}
-                                        </span>
-                                    </td>
+                                    {mode === 'paid' && (
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getCheckinColor(!!reg.is_attended)}`}>
+                                                {reg.is_attended ? 'Checked-in' : 'Belum'}
+                                            </span>
+                                        </td>
+                                    )}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <div className="flex flex-col gap-2 min-w-[180px]">
                                             <button
@@ -738,26 +747,26 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                         {mode === 'transactions' ? (
                             <>
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-3 text-right">Total Amount (All Status):</td>
+                                    <td colSpan={fixedEventId ? 2 : 3} className="px-6 py-3 text-right">Total Amount (All Status):</td>
                                     <td className="px-6 py-3 whitespace-nowrap">
                                         Rp {filteredRegistrants.reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0).toLocaleString()}
                                     </td>
-                                    <td colSpan={3}></td>
+                                    <td colSpan={2}></td>
                                 </tr>
                                 <tr className="bg-green-50 text-green-900">
-                                    <td colSpan={4} className="px-6 py-3 text-right">Total Settle Amount:</td>
+                                    <td colSpan={fixedEventId ? 2 : 3} className="px-6 py-3 text-right">Total Settle Amount:</td>
                                     <td className="px-6 py-3 whitespace-nowrap font-bold">
                                         Rp {filteredRegistrants
                                             .filter(reg => SUCCESS_STATUSES.includes(reg.status?.toLowerCase()))
                                             .reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0)
                                             .toLocaleString()}
                                     </td>
-                                    <td colSpan={3}></td>
+                                    <td colSpan={2}></td>
                                 </tr>
                             </>
                         ) : (
                             <tr className="bg-green-50 text-green-900">
-                                <td colSpan={4} className="px-6 py-3 text-right">Total Paid Amount:</td>
+                                <td colSpan={fixedEventId ? 2 : 3} className="px-6 py-3 text-right">Total Paid Amount:</td>
                                 <td className="px-6 py-3 whitespace-nowrap font-bold">
                                     Rp {filteredRegistrants
                                         .reduce((sum, reg) => sum + (Number(reg.amount) || 0), 0)

@@ -1,13 +1,12 @@
 import React from 'react';
 import { EventList } from './EventList';
-import { RegistrantList } from './RegistrantList';
 import { Scanner } from './Scanner';
 import { RegistrationOverview } from './RegistrationOverview';
 import { RoleManagement } from './RoleManagement';
 import { AuditLogs } from './AuditLogs';
 import { Analytics } from './Analytics';
 import { WAReminder } from './WAReminder';
-import { Calendar, Users, QrCode, ShieldCheck, History, BarChart2, MessageCircle } from 'lucide-react';
+import { Calendar, QrCode, ShieldCheck, History, BarChart2, MessageCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -71,41 +70,6 @@ export const Dashboard: React.FC = () => {
                         </button>
                     )}
 
-                    <button
-                        onClick={() => setTab('transactions')}
-                        className={`
-                            group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                            ${activeTab === 'transactions'
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                        `}
-                    >
-                        <Users
-                            className={`
-                                mr-2 h-4 w-4
-                                ${activeTab === 'transactions' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
-                            `}
-                        />
-                        Data Transaksi
-                    </button>
-
-                    <button
-                        onClick={() => setTab('paid-registrants')}
-                        className={`
-                            group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                            ${activeTab === 'paid-registrants'
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                        `}
-                    >
-                        <Users
-                            className={`
-                                mr-2 h-4 w-4
-                                ${activeTab === 'paid-registrants' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
-                            `}
-                        />
-                        Registrants
-                    </button>
 
                     {role === 'superadmin' && (
                         <button
@@ -194,8 +158,6 @@ export const Dashboard: React.FC = () => {
                     <Analytics sponsorMode={role === 'sponsor'} />
                 )}
                 {activeTab === 'events' && <EventList />}
-                {activeTab === 'transactions' && <RegistrantList mode="transactions" />}
-                {activeTab === 'paid-registrants' && <RegistrantList mode="paid" />}
                 {activeTab === 'wa-reminder' && role === 'superadmin' && <WAReminder />}
                 {activeTab === 'scanner' && (role === 'superadmin' || canScan) && <Scanner />}
                 {activeTab === 'roles' && role === 'superadmin' && <RoleManagement />}

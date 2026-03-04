@@ -175,7 +175,12 @@ export const EventList: React.FC = () => {
                             events.map((event) => (
                                 <tr key={event.id}>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-gray-900">{event.title}</div>
+                                        <Link
+                                            to={`/admin/events/${event.id}`}
+                                            className="text-sm font-medium text-gray-900 hover:text-primary hover:underline underline-offset-2 transition-colors"
+                                        >
+                                            {event.title}
+                                        </Link>
                                         <div className="text-sm text-gray-500">/e/{event.slug}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">

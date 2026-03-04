@@ -40,8 +40,7 @@ interface AnalyticsProps {
 
 export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => {
     const [loading, setLoading] = useState(true);
-    const [allTxRange, setAllTxRange] = useState<1 | 7 | 15 | 30>(7);
-    const [settledRange, setSettledRange] = useState<1 | 7 | 15 | 30>(15);
+    const [settledRange, setSettledRange] = useState<1 | 7 | 15 | 30>(7);
 
     // raw data
     const [registrations, setRegistrations] = useState<any[]>([]);
@@ -66,7 +65,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
             }
         }
 
-        let regsQuery = supabase.from('registrations').select('id, created_at, status, amount, event_id, gender, domicile, current_status');
+        const settlementStatuses = ['paid', 'settlement', 'success'];
+        let regsQuery = supabase
+            .from('registrations')
+            .select('id, created_at, status, amount, event_id, gender, domicile, current_status')
+            .in('status', settlementStatuses);
         if (eventFilter && eventFilter.length > 0) {
             regsQuery = regsQuery.in('event_id', eventFilter);
         } else if (sponsorMode) {
@@ -88,22 +91,16 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
         setLoading(false);
     };
 
-    // ── Derived metrics ──────────────────────────────────────────────────────
-    const SUCCESS = ['paid', 'settlement', 'success'];
-    const paid = registrations.filter(r => SUCCESS.includes(r.status?.toLowerCase()));
-    const pending = registrations.filter(r => (r.status?.toLowerCase() || 'pending') === 'pending');
-    const failed = registrations.filter(r => ['failed', 'expired'].includes(r.status?.toLowerCase()));
-
-    const totalRevenue = paid.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const conversionRate = registrations.length
-        ? Math.round((paid.length / registrations.length) * 100)
-        : 0;
+    // ── Derived metrics (settlement only) ───────────────────────────────────
+    // `registrations` already contains only paid/settlement/success rows (filtered in query)
+    const totalRevenue = registrations.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const totalSettled = registrations.length;
 
     const statCards = [
-        { label: 'Total Registrasi', value: registrations.length, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'Peserta Lunas', value: totalSettled, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
         { label: 'Total Revenue', value: currency(totalRevenue), icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'Conversion Rate', value: `${conversionRate}%`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
-        { label: 'Pembayaran Lunas', value: paid.length, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+        { label: 'Rata-rata Donasi', value: totalSettled ? currency(Math.round(totalRevenue / totalSettled)) : 'Rp 0', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'Pembayaran Lunas', value: totalSettled, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
     ];
 
     // ── 1. Trend data helpers ─────────────────────────────────────────────────
@@ -133,25 +130,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
     const xInterval = (range: 1 | 7 | 15 | 30) =>
         range === 30 ? 4 : range === 15 ? 2 : range === 7 ? 0 : 2;
 
-    // All Transactions chart data
-    const allTxKeys = buildKeys(allTxRange);
-    const allTxMap: Record<string, { total: number; pending: number; failed: number }> = {};
-    allTxKeys.forEach(k => { allTxMap[k] = { total: 0, pending: 0, failed: 0 }; });
-    registrations.forEach(r => {
-        const k = getKey(r.created_at, allTxRange);
-        if (!allTxMap[k]) return;
-        allTxMap[k].total += 1;
-        const s = r.status?.toLowerCase() || 'pending';
-        if (s === 'pending') allTxMap[k].pending += 1;
-        else if (['failed', 'expired'].includes(s)) allTxMap[k].failed += 1;
-    });
-    const allTxData = Object.entries(allTxMap).map(([date, v]) => ({ date, ...v }));
-
-    // Settlement chart data
+    // Settlement trend chart data
     const settledKeys = buildKeys(settledRange);
     const settledMap: Record<string, { registrants: number; revenue: number }> = {};
     settledKeys.forEach(k => { settledMap[k] = { registrants: 0, revenue: 0 }; });
-    paid.forEach(r => {
+    registrations.forEach(r => {
         const k = getKey(r.created_at, settledRange);
         if (!settledMap[k]) return;
         settledMap[k].registrants += 1;
@@ -159,31 +142,31 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
     });
     const settledData = Object.entries(settledMap).map(([date, v]) => ({ date, ...v }));
 
+    // All-time trend (same data, different range selector)
+    const allTxMap: Record<string, { registrants: number; revenue: number }> = {};
+    registrations.forEach(r => {
+        const k = getKey(r.created_at, settledRange);
+        if (!allTxMap[k]) return;
+        allTxMap[k].registrants += 1;
+        allTxMap[k].revenue += Number(r.amount) || 0;
+    });
+
     // Shared dropdown style
     const selectCls = 'text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer';
 
-    // ── 2. Payment Status Donut ──────────────────────────────────────────────
-    const statusData = [
-        { name: 'Lunas', value: paid.length },
-        { name: 'Pending', value: pending.length },
-        { name: 'Gagal', value: failed.length },
-    ].filter(d => d.value > 0);
-
-    // ── 3. Per-Event Registrants ─────────────────────────────────────────────
-    const eventMap: Record<string, { title: string; paid: number; pending: number; failed: number }> = {};
+    // ── 3. Per-Event Registrants (settled only) ──────────────────────────────
+    const eventMap: Record<string, { title: string; settled: number; revenue: number }> = {};
     events.forEach(e => {
-        eventMap[e.id] = { title: e.title.length > 28 ? e.title.slice(0, 26) + '…' : e.title, paid: 0, pending: 0, failed: 0 };
+        eventMap[e.id] = { title: e.title.length > 28 ? e.title.slice(0, 26) + '…' : e.title, settled: 0, revenue: 0 };
     });
     registrations.forEach(r => {
         if (!eventMap[r.event_id]) return;
-        const s = r.status?.toLowerCase() || 'pending';
-        if (SUCCESS.includes(s)) eventMap[r.event_id].paid++;
-        else if (s === 'pending') eventMap[r.event_id].pending++;
-        else if (['failed', 'expired'].includes(s)) eventMap[r.event_id].failed++;
+        eventMap[r.event_id].settled++;
+        eventMap[r.event_id].revenue += Number(r.amount) || 0;
     });
     const perEventData = Object.values(eventMap);
 
-    // ── 4. Gender Breakdown ──────────────────────────────────────────────────
+    // ── 4. Gender Breakdown (settled only) ──────────────────────────────────
     const genderCount: Record<string, number> = {};
     registrations.forEach(r => {
         const g = r.gender || 'Tidak diisi';
@@ -191,7 +174,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
     });
     const genderData = Object.entries(genderCount).map(([name, value]) => ({ name, value }));
 
-    // ── 5. Top Domicile ──────────────────────────────────────────────────────
+    // ── 5. Top Domicile (settled only) ──────────────────────────────────────
     const domicileCount: Record<string, number> = {};
     registrations.forEach(r => {
         const d = r.domicile?.trim() || 'Tidak diisi';
@@ -202,7 +185,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
         .slice(0, 8)
         .map(([name, value]) => ({ name, value }));
 
-    // ── 6. Peserta Role (student / professional / etc) ───────────────────────
+    // ── 6. Peserta Role (settled only) ──────────────────────────────────────
     const roleCount: Record<string, number> = {};
     registrations.forEach(r => {
         const s = r.current_status || 'Tidak diisi';
@@ -240,51 +223,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
             </div>
 
             {/* Area Charts — split: All Transactions vs Settlement */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                {/* All Transactions */}
-                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                    <div className="flex items-start justify-between mb-4">
-                        <div>
-                            <h3 className="font-semibold text-gray-800">Tren Transaksi</h3>
-                            <p className="text-xs text-gray-500 mt-0.5">Semua transaksi masuk — termasuk pending &amp; gagal</p>
-                        </div>
-                        <select
-                            value={allTxRange}
-                            onChange={e => setAllTxRange(Number(e.target.value) as 1 | 7 | 15 | 30)}
-                            className={selectCls}
-                        >
-                            {RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                    </div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={allTxData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                            <defs>
-                                <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="gradPending" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
-                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="gradFailed" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} interval={xInterval(allTxRange)} />
-                            <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend wrapperStyle={{ fontSize: 11 }} />
-                            <Area type="monotone" dataKey="total" name="Total" stroke="#6366f1" fill="url(#gradTotal)" strokeWidth={2} dot={false} />
-                            <Area type="monotone" dataKey="pending" name="Pending" stroke="#f59e0b" fill="url(#gradPending)" strokeWidth={1.5} dot={false} />
-                            <Area type="monotone" dataKey="failed" name="Gagal" stroke="#ef4444" fill="url(#gradFailed)" strokeWidth={1.5} dot={false} />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
                 {/* Settlement Only */}
                 <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                     <div className="flex items-start justify-between mb-4">
@@ -338,39 +277,29 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
                             <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                             <YAxis type="category" dataKey="title" tick={{ fontSize: 11 }} width={130} tickLine={false} />
                             <Tooltip content={<CustomTooltip />} />
-                            <Legend wrapperStyle={{ fontSize: 12 }} />
-                            <Bar dataKey="paid" name="Lunas" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="pending" name="Pending" stackId="a" fill="#f59e0b" />
-                            <Bar dataKey="failed" name="Gagal" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                            <Bar dataKey="settled" name="Peserta Lunas" fill="#10b981" radius={[0, 4, 4, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
 
-                {/* Status Donut */}
+                {/* Revenue per Event */}
                 <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col">
-                    <h3 className="font-semibold text-gray-800 mb-4">Status Pembayaran</h3>
+                    <h3 className="font-semibold text-gray-800 mb-4">Revenue per Event</h3>
                     <div className="flex-1 flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height={200}>
-                            <PieChart>
-                                <Pie data={statusData} cx="50%" cy="50%"
-                                    innerRadius={55} outerRadius={85}
-                                    paddingAngle={3} dataKey="value"
-                                >
-                                    {statusData.map((_, i) => (
-                                        <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />
+                        <ResponsiveContainer width="100%" height={240}>
+                            <BarChart data={perEventData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                                <XAxis type="number" tick={{ fontSize: 10 }} tickLine={false} axisLine={false}
+                                    tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                                <YAxis type="category" dataKey="title" tick={{ fontSize: 10 }} width={130} tickLine={false} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Bar dataKey="revenue" name="Revenue" radius={[0, 4, 4, 0]}>
+                                    {perEventData.map((_: any, i: number) => (
+                                        <Cell key={i} fill={COLORS_EVENT[i % COLORS_EVENT.length]} />
                                     ))}
-                                </Pie>
-                                <Tooltip formatter={(v: any) => [`${v} peserta`]} />
-                            </PieChart>
+                                </Bar>
+                            </BarChart>
                         </ResponsiveContainer>
-                    </div>
-                    <div className="flex flex-wrap justify-center gap-3 mt-2">
-                        {statusData.map((d, i) => (
-                            <div key={d.name} className="flex items-center gap-1.5 text-xs text-gray-600">
-                                <span className="w-2.5 h-2.5 rounded-full" style={{ background: COLORS_PIE[i] }} />
-                                {d.name}: <span className="font-semibold text-gray-800">{d.value}</span>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </div>

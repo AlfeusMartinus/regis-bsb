@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Users, CreditCard, UserCheck, UserX, Loader2 } from 'lucide-react';
+import { Users, CreditCard, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const SUCCESS_STATUSES = ['paid', 'settlement', 'success'];
@@ -51,20 +51,14 @@ export const RegistrationOverview: React.FC = () => {
     const metrics = useMemo(() => {
         const totalRegistrants = registrations.length;
         const paidRegistrants = registrations.filter((reg) => SUCCESS_STATUSES.includes(reg.status?.toLowerCase()));
-        const checkedIn = paidRegistrants.filter((reg) => reg.is_attended).length;
-        const notCheckedIn = paidRegistrants.length - checkedIn;
         const pendingPayments = Math.max(0, totalRegistrants - paidRegistrants.length);
         const paymentRate = totalRegistrants > 0 ? Math.round((paidRegistrants.length / totalRegistrants) * 100) : 0;
-        const checkinRate = paidRegistrants.length > 0 ? Math.round((checkedIn / paidRegistrants.length) * 100) : 0;
 
         return {
             totalRegistrants,
             paidRegistrants: paidRegistrants.length,
-            checkedIn,
-            notCheckedIn,
             pendingPayments,
             paymentRate,
-            checkinRate,
         };
     }, [registrations]);
 
@@ -91,24 +85,10 @@ export const RegistrationOverview: React.FC = () => {
             icon: CreditCard,
             accent: 'text-green-600 bg-green-50',
         },
-        {
-            title: 'Berhasil Check-in',
-            value: metrics.checkedIn,
-            note: `${metrics.checkinRate}% dari peserta lunas`,
-            icon: UserCheck,
-            accent: 'text-emerald-600 bg-emerald-50',
-        },
-        {
-            title: 'Belum Check-in',
-            value: metrics.notCheckedIn,
-            note: `${metrics.paidRegistrants} total peserta lunas`,
-            icon: UserX,
-            accent: 'text-amber-600 bg-amber-50',
-        },
     ];
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {cards.map((card) => {
                 const Icon = card.icon;
                 return (

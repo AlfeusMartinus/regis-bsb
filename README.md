@@ -24,6 +24,7 @@
 - **Role-based Authentication**: Secure admin and visitor boundaries.
 - **Automated Workflows**: Intelligent edge-functions to process payment webhooks and handle serverless logic.
 - **Data Export**: Export verified registrant lists and donation trackers straight to `.csv`.
+- **Email Broadcast**: Admin can blast event information to registrants by event and registration status.
 
 ## 🛠️ Technology Stack
 
@@ -62,6 +63,8 @@ Follow these steps to setup the project locally.
    VITE_SUPABASE_URL
    VITE_SUPABASE_ANON_KEY
    VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+   SMTP_USER
+   SMTP_PASS
    ```
    *Note: If you plan to test the Supabase Edge Functions locally, duplicate this to a `.env.local` inside the `supabase/` folder containing the necessary keys (like your Payment Gateway Sandbox keys and Supabase Service Role Key).*
 

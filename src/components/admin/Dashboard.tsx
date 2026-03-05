@@ -5,7 +5,8 @@ import { RoleManagement } from './RoleManagement';
 import { AuditLogs } from './AuditLogs';
 import { Analytics } from './Analytics';
 import { WAReminder } from './WAReminder';
-import { Calendar, ShieldCheck, History, BarChart2, MessageCircle } from 'lucide-react';
+import { EmailBroadcast } from './EmailBroadcast';
+import { Calendar, ShieldCheck, History, BarChart2, MessageCircle, Mail } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -69,6 +70,26 @@ export const Dashboard: React.FC = () => {
                         </button>
                     )}
 
+
+                    {role === 'superadmin' && (
+                        <button
+                            onClick={() => setTab('email-broadcast')}
+                            className={`
+                                group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
+                                ${activeTab === 'email-broadcast'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
+                            `}
+                        >
+                            <Mail
+                                className={`
+                                    mr-2 h-4 w-4
+                                    ${activeTab === 'email-broadcast' ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'}
+                                `}
+                            />
+                            Email Broadcast
+                        </button>
+                    )}
 
                     {role === 'superadmin' && (
                         <button
@@ -137,6 +158,7 @@ export const Dashboard: React.FC = () => {
                     <Analytics sponsorMode={role === 'sponsor'} />
                 )}
                 {activeTab === 'events' && <EventList />}
+                {activeTab === 'email-broadcast' && role === 'superadmin' && <EmailBroadcast />}
                 {activeTab === 'wa-reminder' && role === 'superadmin' && <WAReminder />}
                 {activeTab === 'roles' && role === 'superadmin' && <RoleManagement />}
                 {activeTab === 'audit' && role === 'superadmin' && <AuditLogs />}

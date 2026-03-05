@@ -116,12 +116,16 @@ declare global {
     }
 }
 
-export const WAReminder: React.FC = () => {
+export interface WAReminderProps {
+    fixedEventId?: string;
+}
+
+export const WAReminder: React.FC<WAReminderProps> = ({ fixedEventId }) => {
     const [registrants, setRegistrants] = useState<any[]>([]);
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [eventFilter, setEventFilter] = useState('all');
+    const [eventFilter, setEventFilter] = useState(fixedEventId || 'all');
     const [statusTab, setStatusTab] = useState<'pending' | 'expired'>('pending');
     const [generatingLinkId, setGeneratingLinkId] = useState<string | null>(null);
     // Store generated links per reg id so we can show WA button after generation
@@ -302,16 +306,18 @@ export const WAReminder: React.FC = () => {
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <select
-                    className="h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white sm:min-w-[200px]"
-                    value={eventFilter}
-                    onChange={(e) => setEventFilter(e.target.value)}
-                >
-                    <option value="all">Semua Event</option>
-                    {events.map((event) => (
-                        <option key={event.id} value={event.id}>{event.title}</option>
-                    ))}
-                </select>
+                {!fixedEventId && (
+                    <select
+                        className="h-10 px-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white sm:min-w-[200px]"
+                        value={eventFilter}
+                        onChange={(e) => setEventFilter(e.target.value)}
+                    >
+                        <option value="all">Semua Event</option>
+                        {events.map((event) => (
+                            <option key={event.id} value={event.id}>{event.title}</option>
+                        ))}
+                    </select>
+                )}
 
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />

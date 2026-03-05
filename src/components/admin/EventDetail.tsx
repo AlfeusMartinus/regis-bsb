@@ -4,15 +4,16 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { RegistrantList } from './RegistrantList';
 import { Scanner } from './Scanner';
+import { WAReminder } from './WAReminder'; // Import WAReminder
 import {
     Loader2, ArrowLeft, Calendar, MapPin, ExternalLink,
-    Users, DollarSign, Clock, Globe, FileText, CheckCircle, QrCode,
+    Users, DollarSign, Clock, Globe, FileText, CheckCircle, QrCode, MessageCircle, // Add MessageCircle
 } from 'lucide-react';
 
 const SUCCESS_STATUSES = ['paid', 'settlement', 'success'];
 
 const currency = (v: number) =>
-    `Rp ${v.toLocaleString('id-ID')}`;
+    `Rp ${v.toLocaleString('id-ID')} `;
 
 export const EventDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -22,7 +23,7 @@ export const EventDetail: React.FC = () => {
 
     const canAccessScanner = role === 'superadmin' || canScan;
 
-    type TabType = 'info' | 'transactions' | 'paid-registrants' | 'scanner';
+    type TabType = 'info' | 'transactions' | 'paid-registrants' | 'scanner' | 'wa-reminder'; // Add 'wa-reminder' to TabType
     const initialTab = (searchParams.get('tab') as TabType) || 'info';
     const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [event, setEvent] = useState<any>(null);
@@ -179,28 +180,36 @@ export const EventDetail: React.FC = () => {
                 <nav className="flex flex-wrap gap-2">
                     <button
                         onClick={() => setActiveTab('info')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'info' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'info' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
                     >
                         <FileText size={15} /> Info Event
                     </button>
                     <button
                         onClick={() => setActiveTab('transactions')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'transactions' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'transactions' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
                     >
                         <Users size={15} /> Data Transaksi ({registrants.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('paid-registrants')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'paid-registrants' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'paid-registrants' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
                     >
                         <CheckCircle size={15} /> Registrants Lunas ({paid.length})
                     </button>
                     {canAccessScanner && (
                         <button
                             onClick={() => setActiveTab('scanner')}
-                            className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'scanner' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                            className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'scanner' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
                         >
                             <QrCode size={15} /> Scanner Check-in
+                        </button>
+                    )}
+                    {role === 'superadmin' && (
+                        <button
+                            onClick={() => setActiveTab('wa-reminder')}
+                            className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'wa-reminder' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
+                        >
+                            <MessageCircle size={15} /> WA Reminder
                         </button>
                     )}
                 </nav>
@@ -215,7 +224,7 @@ export const EventDetail: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-4">
                                 <InfoRow label="Nama Event" value={event.title} />
-                                <InfoRow label="Slug / URL" value={`/e/${event.slug}`} />
+                                <InfoRow label="Slug / URL" value={`/ e / ${event.slug} `} />
                                 <InfoRow label="Tanggal & Waktu" value={new Date(event.date_time).toLocaleString('id-ID', {
                                     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
                                 })} />
@@ -270,6 +279,11 @@ export const EventDetail: React.FC = () => {
                 {/* ── Scanner Tab ───────────────────────────────────────────── */}
                 {activeTab === 'scanner' && canAccessScanner && (
                     <Scanner fixedEventId={id} />
+                )}
+
+                {/* ── WA Reminder Tab ───────────────────────────────────────── */}
+                {activeTab === 'wa-reminder' && role === 'superadmin' && (
+                    <WAReminder fixedEventId={id} />
                 )}
             </div>
         </div>

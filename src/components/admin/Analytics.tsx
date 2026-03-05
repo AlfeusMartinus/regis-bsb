@@ -68,7 +68,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
         const settlementStatuses = ['paid', 'settlement', 'success'];
         let regsQuery = supabase
             .from('registrations')
-            .select('id, created_at, status, amount, event_id, gender, domicile, current_status')
+            .select('id, created_at, status, amount, event_id, gender, domicile, current_status, university, institution, role')
             .in('status', settlementStatuses);
         if (eventFilter && eventFilter.length > 0) {
             regsQuery = regsQuery.in('event_id', eventFilter);
@@ -192,6 +192,45 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
         roleCount[s] = (roleCount[s] || 0) + 1;
     });
     const roleData = Object.entries(roleCount).map(([name, value]) => ({ name, value }));
+
+    // ── 7. Top Kampus (settled only) ────────────────────────────────────────
+    const univCount: Record<string, number> = {};
+    registrations.forEach(r => {
+        const u = r.university?.trim() || 'Tidak diisi/Bukan PR';
+        if (u && u !== '-' && u.toLowerCase() !== 'tidak diisi/bukan pr') {
+            univCount[u] = (univCount[u] || 0) + 1;
+        }
+    });
+    const universityData = Object.entries(univCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name, value]) => ({ name, value }));
+
+    // ── 8. Top Company (settled only) ───────────────────────────────────────
+    const compCount: Record<string, number> = {};
+    registrations.forEach(r => {
+        const c = r.institution?.trim() || 'Tidak diisi';
+        if (c && c !== '-' && c.toLowerCase() !== 'tidak diisi') {
+            compCount[c] = (compCount[c] || 0) + 1;
+        }
+    });
+    const companyData = Object.entries(compCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name, value]) => ({ name, value }));
+
+    // ── 9. Job Role (settled only) ──────────────────────────────────────────
+    const jobRoleCount: Record<string, number> = {};
+    registrations.forEach(r => {
+        const jr = r.role?.trim() || 'Tidak diisi';
+        if (jr && jr !== '-' && jr.toLowerCase() !== 'tidak diisi') {
+            jobRoleCount[jr] = (jobRoleCount[jr] || 0) + 1;
+        }
+    });
+    const jobRoleData = Object.entries(jobRoleCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name, value]) => ({ name, value }));
 
     if (loading) return (
         <div className="flex justify-center items-center h-64">
@@ -365,6 +404,63 @@ export const Analytics: React.FC<AnalyticsProps> = ({ sponsorMode = false }) => 
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* Row: Additonal Demographics */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Top Job Roles */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                    <h3 className="font-semibold text-gray-800 mb-4">Top Job Roles</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={jobRoleData} layout="vertical" margin={{ left: -10, right: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                            <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                            <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} tickLine={false} />
+                            <Tooltip />
+                            <Bar dataKey="value" name="Peserta" radius={[0, 4, 4, 0]}>
+                                {jobRoleData.map((_, i) => (
+                                    <Cell key={i} fill={COLORS_EVENT[(i + 1) % COLORS_EVENT.length]} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Top Companies */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                    <h3 className="font-semibold text-gray-800 mb-4">Top Companies / Institusi</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={companyData} layout="vertical" margin={{ left: -10, right: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                            <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                            <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} tickLine={false} />
+                            <Tooltip />
+                            <Bar dataKey="value" name="Peserta" radius={[0, 4, 4, 0]}>
+                                {companyData.map((_, i) => (
+                                    <Cell key={i} fill={COLORS_EVENT[(i + 3) % COLORS_EVENT.length]} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Top Universities */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                    <h3 className="font-semibold text-gray-800 mb-4">Top Kampus</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={universityData} layout="vertical" margin={{ left: -10, right: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                            <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                            <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={110} tickLine={false} />
+                            <Tooltip />
+                            <Bar dataKey="value" name="Peserta" radius={[0, 4, 4, 0]}>
+                                {universityData.map((_, i) => (
+                                    <Cell key={i} fill={COLORS_EVENT[(i + 5) % COLORS_EVENT.length]} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        </div >
     );
 };

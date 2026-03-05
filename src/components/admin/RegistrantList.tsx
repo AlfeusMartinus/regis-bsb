@@ -675,7 +675,14 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                             paginatedRegistrants.map((reg) => (
                                 <tr key={reg.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {reg.created_at ? new Date(reg.created_at).toLocaleDateString('id-ID') : '-'}
+                                        {reg.created_at ? (() => {
+                                            const d = new Date(reg.created_at);
+                                            const pad = (n: number) => String(n).padStart(2, '0');
+                                            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+                                            // Convert to WIB (UTC+7)
+                                            const wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+                                            return `${pad(wib.getUTCDate())} ${months[wib.getUTCMonth()]} ${wib.getUTCFullYear()}, ${pad(wib.getUTCHours())}:${pad(wib.getUTCMinutes())}:${pad(wib.getUTCSeconds())}`;
+                                        })() : '-'}
                                     </td>
                                     <td className="px-6 py-4">
                                         <p className="text-sm font-medium text-gray-900">{reg.name}</p>

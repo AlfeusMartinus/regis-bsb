@@ -4,9 +4,9 @@ import { RegistrationOverview } from './RegistrationOverview';
 import { RoleManagement } from './RoleManagement';
 import { AuditLogs } from './AuditLogs';
 import { Analytics } from './Analytics';
-import { WAReminder } from './WAReminder';
 import { EmailBroadcast } from './EmailBroadcast';
-import { Calendar, ShieldCheck, History, BarChart2, MessageCircle, Mail } from 'lucide-react';
+import { AccessDenied } from '../ui/AccessDenied';
+import { Calendar, ShieldCheck, History, BarChart2, Mail } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -34,117 +34,45 @@ export const Dashboard: React.FC = () => {
                 <nav className="flex flex-wrap gap-2" aria-label="Tabs">
                     <button
                         onClick={() => setTab('events')}
-                        className={`
-                            group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                            ${activeTab === 'events'
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                        `}
+                        className={`group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${activeTab === 'events' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
                     >
-                        <Calendar
-                            className={`
-                                mr-2 h-4 w-4
-                                ${activeTab === 'events' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
-                            `}
-                        />
+                        <Calendar className={`mr-2 h-4 w-4 ${activeTab === 'events' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}`} />
                         Events
                     </button>
 
                     {(role === 'superadmin' || (role === 'sponsor' && canViewAnalytics)) && (
                         <button
                             onClick={() => setTab('analytics')}
-                            className={`
-                                group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                                ${activeTab === 'analytics'
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                            `}
+                            className={`group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${activeTab === 'analytics' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
                         >
-                            <BarChart2
-                                className={`
-                                    mr-2 h-4 w-4
-                                    ${activeTab === 'analytics' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
-                                `}
-                            />
+                            <BarChart2 className={`mr-2 h-4 w-4 ${activeTab === 'analytics' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}`} />
                             Analytics
                         </button>
                     )}
 
-
                     {role === 'superadmin' && (
                         <button
                             onClick={() => setTab('email-broadcast')}
-                            className={`
-                                group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                                ${activeTab === 'email-broadcast'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                            `}
+                            className={`group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${activeTab === 'email-broadcast' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
                         >
-                            <Mail
-                                className={`
-                                    mr-2 h-4 w-4
-                                    ${activeTab === 'email-broadcast' ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'}
-                                `}
-                            />
+                            <Mail className={`mr-2 h-4 w-4 ${activeTab === 'email-broadcast' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}`} />
                             Email Broadcast
                         </button>
                     )}
-
-                    {role === 'superadmin' && (
-                        <button
-                            onClick={() => setTab('wa-reminder')}
-                            className={`
-                                group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                                ${activeTab === 'wa-reminder'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                            `}
-                        >
-                            <MessageCircle
-                                className={`
-                                    mr-2 h-4 w-4
-                                    ${activeTab === 'wa-reminder' ? 'text-green-600' : 'text-gray-400 group-hover:text-gray-500'}
-                                `}
-                            />
-                            WA Reminder
-                        </button>
-                    )}
-
                     {role === 'superadmin' && (
                         <>
                             <button
                                 onClick={() => setTab('roles')}
-                                className={`
-                                    group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                                    ${activeTab === 'roles'
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                                `}
+                                className={`group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${activeTab === 'roles' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
                             >
-                                <ShieldCheck
-                                    className={`
-                                        mr-2 h-4 w-4
-                                        ${activeTab === 'roles' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
-                                    `}
-                                />
+                                <ShieldCheck className={`mr-2 h-4 w-4 ${activeTab === 'roles' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}`} />
                                 Role Management
                             </button>
                             <button
                                 onClick={() => setTab('audit')}
-                                className={`
-                                    group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors
-                                    ${activeTab === 'audit'
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}
-                                `}
+                                className={`group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${activeTab === 'audit' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
                             >
-                                <History
-                                    className={`
-                                        mr-2 h-4 w-4
-                                        ${activeTab === 'audit' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}
-                                    `}
-                                />
+                                <History className={`mr-2 h-4 w-4 ${activeTab === 'audit' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}`} />
                                 Audit Logs
                             </button>
                         </>
@@ -154,14 +82,19 @@ export const Dashboard: React.FC = () => {
 
             {/* Content */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 shadow-sm">
-                {activeTab === 'analytics' && (role === 'superadmin' || (role === 'sponsor' && canViewAnalytics)) && (
+                {activeTab === 'analytics' && (role === 'superadmin' || (role === 'sponsor' && canViewAnalytics)) ? (
                     <Analytics sponsorMode={role === 'sponsor'} />
+                ) : activeTab === 'events' ? (
+                    <EventList />
+                ) : activeTab === 'email-broadcast' && role === 'superadmin' ? (
+                    <EmailBroadcast />
+                ) : activeTab === 'roles' && role === 'superadmin' ? (
+                    <RoleManagement />
+                ) : activeTab === 'audit' && role === 'superadmin' ? (
+                    <AuditLogs />
+                ) : (
+                    <AccessDenied />
                 )}
-                {activeTab === 'events' && <EventList />}
-                {activeTab === 'email-broadcast' && role === 'superadmin' && <EmailBroadcast />}
-                {activeTab === 'wa-reminder' && role === 'superadmin' && <WAReminder />}
-                {activeTab === 'roles' && role === 'superadmin' && <RoleManagement />}
-                {activeTab === 'audit' && role === 'superadmin' && <AuditLogs />}
             </div>
         </div>
     );

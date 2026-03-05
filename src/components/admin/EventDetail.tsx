@@ -4,15 +4,17 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { RegistrantList } from './RegistrantList';
 import { Scanner } from './Scanner';
+import { WAReminder } from './WAReminder'; // Import WAReminder
+import { AccessDenied } from '../ui/AccessDenied';
 import {
     Loader2, ArrowLeft, Calendar, MapPin, ExternalLink,
-    Users, DollarSign, Clock, Globe, FileText, CheckCircle, QrCode,
+    Users, DollarSign, Clock, Globe, FileText, CheckCircle, QrCode, MessageCircle, // Add MessageCircle
 } from 'lucide-react';
 
 const SUCCESS_STATUSES = ['paid', 'settlement', 'success'];
 
 const currency = (v: number) =>
-    `Rp ${v.toLocaleString('id-ID')}`;
+    `Rp ${v.toLocaleString('id-ID')} `;
 
 export const EventDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -22,7 +24,7 @@ export const EventDetail: React.FC = () => {
 
     const canAccessScanner = role === 'superadmin' || canScan;
 
-    type TabType = 'info' | 'transactions' | 'paid-registrants' | 'scanner';
+    type TabType = 'info' | 'transactions' | 'paid-registrants' | 'scanner' | 'wa-reminder'; // Add 'wa-reminder' to TabType
     const initialTab = (searchParams.get('tab') as TabType) || 'info';
     const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [event, setEvent] = useState<any>(null);
@@ -179,28 +181,36 @@ export const EventDetail: React.FC = () => {
                 <nav className="flex flex-wrap gap-2">
                     <button
                         onClick={() => setActiveTab('info')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'info' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'info' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
                     >
                         <FileText size={15} /> Info Event
                     </button>
                     <button
                         onClick={() => setActiveTab('transactions')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'transactions' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'transactions' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
                     >
                         <Users size={15} /> Data Transaksi ({registrants.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('paid-registrants')}
-                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'paid-registrants' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                        className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'paid-registrants' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
                     >
                         <CheckCircle size={15} /> Registrants Lunas ({paid.length})
                     </button>
                     {canAccessScanner && (
                         <button
                             onClick={() => setActiveTab('scanner')}
-                            className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'scanner' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                            className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'scanner' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
                         >
                             <QrCode size={15} /> Scanner Check-in
+                        </button>
+                    )}
+                    {role === 'superadmin' && (
+                        <button
+                            onClick={() => setActiveTab('wa-reminder')}
+                            className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'wa-reminder' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
+                        >
+                            <MessageCircle size={15} /> WA Reminder
                         </button>
                     )}
                 </nav>
@@ -210,7 +220,7 @@ export const EventDetail: React.FC = () => {
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
 
                 {/* ── Info Tab ─────────────────────────────────────────────── */}
-                {activeTab === 'info' && (
+                {activeTab === 'info' ? (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-4">
@@ -243,7 +253,7 @@ export const EventDetail: React.FC = () => {
                             <div>
                                 <p className="text-xs text-gray-500 mb-2">Deskripsi</p>
                                 <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-700 whitespace-pre-wrap leading-relaxed border border-gray-100">
-                                    {event.description}
+                                    <div dangerouslySetInnerHTML={{ __html: event.description }} />
                                 </div>
                             </div>
                         )}
@@ -255,21 +265,16 @@ export const EventDetail: React.FC = () => {
                             <StatPill label="Expired" count={expired.length} color="text-red-700 bg-red-50 border-red-100" />
                         </div>
                     </div>
-                )}
-
-                {/* ── Data Transaksi Tab ────────────────────────────────────── */}
-                {activeTab === 'transactions' && (
+                ) : activeTab === 'transactions' ? (
                     <RegistrantList mode="transactions" fixedEventId={id} />
-                )}
-
-                {/* ── Registrants Lunas Tab ─────────────────────────────────── */}
-                {activeTab === 'paid-registrants' && (
+                ) : activeTab === 'paid-registrants' ? (
                     <RegistrantList mode="paid" fixedEventId={id} />
-                )}
-
-                {/* ── Scanner Tab ───────────────────────────────────────────── */}
-                {activeTab === 'scanner' && canAccessScanner && (
+                ) : activeTab === 'scanner' && canAccessScanner ? (
                     <Scanner fixedEventId={id} />
+                ) : activeTab === 'wa-reminder' && role === 'superadmin' ? (
+                    <WAReminder fixedEventId={id} />
+                ) : (
+                    <AccessDenied />
                 )}
             </div>
         </div>

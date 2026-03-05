@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { RegistrantList } from './RegistrantList';
 import { Scanner } from './Scanner';
 import { WAReminder } from './WAReminder'; // Import WAReminder
+import { AccessDenied } from '../ui/AccessDenied';
 import {
     Loader2, ArrowLeft, Calendar, MapPin, ExternalLink,
     Users, DollarSign, Clock, Globe, FileText, CheckCircle, QrCode, MessageCircle, // Add MessageCircle
@@ -219,12 +220,12 @@ export const EventDetail: React.FC = () => {
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
 
                 {/* ── Info Tab ─────────────────────────────────────────────── */}
-                {activeTab === 'info' && (
+                {activeTab === 'info' ? (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-4">
                                 <InfoRow label="Nama Event" value={event.title} />
-                                <InfoRow label="Slug / URL" value={`/ e / ${event.slug} `} />
+                                <InfoRow label="Slug / URL" value={`/e/${event.slug}`} />
                                 <InfoRow label="Tanggal & Waktu" value={new Date(event.date_time).toLocaleString('id-ID', {
                                     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
                                 })} />
@@ -252,7 +253,7 @@ export const EventDetail: React.FC = () => {
                             <div>
                                 <p className="text-xs text-gray-500 mb-2">Deskripsi</p>
                                 <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-700 whitespace-pre-wrap leading-relaxed border border-gray-100">
-                                    {event.description}
+                                    <div dangerouslySetInnerHTML={{ __html: event.description }} />
                                 </div>
                             </div>
                         )}
@@ -264,26 +265,16 @@ export const EventDetail: React.FC = () => {
                             <StatPill label="Expired" count={expired.length} color="text-red-700 bg-red-50 border-red-100" />
                         </div>
                     </div>
-                )}
-
-                {/* ── Data Transaksi Tab ────────────────────────────────────── */}
-                {activeTab === 'transactions' && (
+                ) : activeTab === 'transactions' ? (
                     <RegistrantList mode="transactions" fixedEventId={id} />
-                )}
-
-                {/* ── Registrants Lunas Tab ─────────────────────────────────── */}
-                {activeTab === 'paid-registrants' && (
+                ) : activeTab === 'paid-registrants' ? (
                     <RegistrantList mode="paid" fixedEventId={id} />
-                )}
-
-                {/* ── Scanner Tab ───────────────────────────────────────────── */}
-                {activeTab === 'scanner' && canAccessScanner && (
+                ) : activeTab === 'scanner' && canAccessScanner ? (
                     <Scanner fixedEventId={id} />
-                )}
-
-                {/* ── WA Reminder Tab ───────────────────────────────────────── */}
-                {activeTab === 'wa-reminder' && role === 'superadmin' && (
+                ) : activeTab === 'wa-reminder' && role === 'superadmin' ? (
                     <WAReminder fixedEventId={id} />
+                ) : (
+                    <AccessDenied />
                 )}
             </div>
         </div>

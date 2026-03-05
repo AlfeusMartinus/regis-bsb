@@ -3,6 +3,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { supabase } from '../../lib/supabase';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, Plus, Trash2, Upload, Save, ArrowLeft, Globe, EyeOff } from 'lucide-react';
+import { RichTextEditor } from '../ui/RichTextEditor';
 
 interface Speaker {
     name: string;
@@ -36,13 +37,14 @@ export const EditEvent: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [isPublished, setIsPublished] = useState(false);
+    const [enableMapLink, setEnableMapLink] = useState(false);
     const publishIntentRef = useRef<boolean | null>(null);
 
     // File states for uploads
     const [speakerFiles, setSpeakerFiles] = useState<{ [key: number]: File | null }>({});
     const [moderatorFile, setModeratorFile] = useState<File | null>(null);
 
-    const { register, control, handleSubmit, reset, setValue } = useForm<EventFormHelper>({
+    const { register, control, handleSubmit, reset, setValue, watch } = useForm<EventFormHelper>({
         defaultValues: {
             speakers: [{ name: '', title: '' }],
             moderator: { name: '', title: '' }
@@ -98,6 +100,7 @@ export const EditEvent: React.FC = () => {
                     minimum_donation: data.minimum_donation ? formatCurrency(data.minimum_donation.toString()) : ''
                 });
                 setIsPublished(!!data.is_published);
+                setEnableMapLink(!!data.location_link && data.location_link.trim().length > 0);
             }
         } catch (error) {
             console.error("Error fetching event:", error);
@@ -163,7 +166,7 @@ export const EditEvent: React.FC = () => {
                     date_time: new Date(formData.date_time).toISOString(),
                     location: formData.location,
                     location_detail: formData.location_detail,
-                    location_link: formData.location_link,
+                    location_link: enableMapLink ? formData.location_link : '',
                     speakers: speakersData,
                     moderator: moderatorData,
                     minimum_donation: formData.minimum_donation ? Number(formData.minimum_donation.replace(/\./g, '')) : 1000,
@@ -240,8 +243,12 @@ export const EditEvent: React.FC = () => {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea {...register('description')} rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2"></textarea>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <RichTextEditor
+                        value={watch('description') || ''}
+                        onChange={(val) => setValue('description', val, { shouldValidate: true })}
+                        className="mt-1"
+                    />
                 </div>
 
                 <div>
@@ -255,10 +262,23 @@ export const EditEvent: React.FC = () => {
                     <p className="text-xs text-gray-500 mt-1">Full detailed address to show below the location name.</p>
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Google Maps Link (Optional)</label>
-                    <input {...register('location_link')} placeholder="https://maps.app.goo.gl/..." type="url" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2 text-blue-600" />
-                    <p className="text-xs text-gray-500 mt-1">Leave empty to use default Google Maps search by Location name.</p>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-gray-700">Google Maps Link (Optional)</label>
+                        <button
+                            type="button"
+                            onClick={() => setEnableMapLink(!enableMapLink)}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${enableMapLink ? 'bg-primary' : 'bg-gray-300'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enableMapLink ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+                    {enableMapLink && (
+                        <div className="mt-4">
+                            <input {...register('location_link')} placeholder="https://maps.app.goo.gl/..." type="url" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2 text-blue-600" />
+                            <p className="text-xs text-gray-500 mt-1">Leave empty to use default Google Maps search by Location name.</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Speakers */}

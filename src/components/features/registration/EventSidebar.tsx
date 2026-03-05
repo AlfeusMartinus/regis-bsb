@@ -70,9 +70,22 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                     <h1 className="text-2xl md:text-3xl lg:text-4xl font-black leading-[1.1] tracking-tight mb-4 text-[#111814] break-words">
                         {displayEvent.title}
                     </h1>
-                    <p className="text-slate-500 text-base md:text-lg leading-relaxed break-words">
-                        {displayEvent.description}
-                    </p>
+                    <div className="text-slate-500 text-base md:text-lg leading-relaxed break-words event-description">
+                        <style>
+                            {`
+                                .event-description * { font-family: inherit !important; font-size: inherit !important; color: inherit !important; background-color: transparent !important; line-height: inherit !important; }
+                                .event-description ul { list-style-type: disc !important; padding-left: 1.5rem !important; margin-bottom: 0.5rem !important; }
+                                .event-description ol { list-style-type: decimal !important; padding-left: 1.5rem !important; margin-bottom: 0.5rem !important; }
+                                .event-description li { margin-bottom: 0.25rem !important; }
+                                .event-description p, .event-description div { margin-bottom: 0.5rem; }
+                                .event-description p:last-child, .event-description div:last-child { margin-bottom: 0; }
+                                .event-description b, .event-description strong { font-weight: 700 !important; color: #111814 !important; }
+                                .event-description i, .event-description em { font-style: italic !important; }
+                                .event-description u { text-decoration: underline !important; }
+                            `}
+                        </style>
+                        <div dangerouslySetInnerHTML={{ __html: displayEvent.description || '' }} />
+                    </div>
                 </div>
 
                 <div className="flex flex-col gap-5 mt-8 md:mt-12">
@@ -106,16 +119,18 @@ export const EventSidebar: React.FC<EventSidebarProps> = ({ event, loading }) =>
                                     {displayEvent.location_detail}
                                 </p>
                             )}
-                            <a
-                                href={displayEvent.location_link ? displayEvent.location_link : `https://maps.google.com/?q=${encodeURIComponent(displayEvent.location)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors mt-1"
-                                title="Buka di Google Maps"
-                            >
-                                <span className="material-symbols-outlined text-[14px]">map</span>
-                                Buka di Google Maps
-                            </a>
+                            {displayEvent.location_link && (
+                                <a
+                                    href={displayEvent.location_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors mt-1"
+                                    title="Buka di Google Maps"
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">map</span>
+                                    Buka di Google Maps
+                                </a>
+                            )}
                         </div>
                     </div>
                 </div>

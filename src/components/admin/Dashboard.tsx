@@ -4,8 +4,9 @@ import { RegistrationOverview } from './RegistrationOverview';
 import { RoleManagement } from './RoleManagement';
 import { AuditLogs } from './AuditLogs';
 import { Analytics } from './Analytics';
+import { EmailBroadcast } from './EmailBroadcast';
 import { AccessDenied } from '../ui/AccessDenied';
-import { Calendar, ShieldCheck, History, BarChart2 } from 'lucide-react';
+import { Calendar, ShieldCheck, History, BarChart2, Mail } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -50,6 +51,15 @@ export const Dashboard: React.FC = () => {
                     )}
 
                     {role === 'superadmin' && (
+                        <button
+                            onClick={() => setTab('email-broadcast')}
+                            className={`group inline-flex items-center py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${activeTab === 'email-broadcast' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`}
+                        >
+                            <Mail className={`mr-2 h-4 w-4 ${activeTab === 'email-broadcast' ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}`} />
+                            Email Broadcast
+                        </button>
+                    )}
+                    {role === 'superadmin' && (
                         <>
                             <button
                                 onClick={() => setTab('roles')}
@@ -76,6 +86,8 @@ export const Dashboard: React.FC = () => {
                     <Analytics sponsorMode={role === 'sponsor'} />
                 ) : activeTab === 'events' ? (
                     <EventList />
+                ) : activeTab === 'email-broadcast' && role === 'superadmin' ? (
+                    <EmailBroadcast />
                 ) : activeTab === 'roles' && role === 'superadmin' ? (
                     <RoleManagement />
                 ) : activeTab === 'audit' && role === 'superadmin' ? (

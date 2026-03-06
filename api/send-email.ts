@@ -123,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             Bukti Tiket Anda (ID: ${finalTicketId})
                         </p>
                         <div style="display: inline-block; padding: 10px; background: white; border-radius: 8px;">
-                            <img src="cid:${qrCid}" alt="QR Code Ticket" width="200" height="200" style="display: block; width: 100%; max-width: 200px; height: auto;" />
+                            <img src="cid:${qrCid}" alt="QR Code Ticket" width="280" height="280" style="display: block; width: 100%; max-width: 280px; height: auto;" />
                         </div>
                         <p style="margin: 16px 0 0 0; font-size: 13px; color: #6b7280; line-height: 1.5;">
                             Silakan tunjukkan QR code ini di meja registrasi saat menghadiri acara.

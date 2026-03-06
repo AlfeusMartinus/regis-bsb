@@ -383,45 +383,71 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
 
         try {
             const config = {
-                fps: 18,
-                disableFlip: false,
+                fps: isMobileViewport ? 24 : 14,
+                disableFlip: true,
                 experimentalFeatures: {
                     useBarCodeDetectorIfSupported: true,
                 },
                 formatsToSupport: [
                     Html5QrcodeSupportedFormats.QR_CODE,
-                    Html5QrcodeSupportedFormats.AZTEC,
-                    Html5QrcodeSupportedFormats.CODABAR,
-                    Html5QrcodeSupportedFormats.CODE_39,
-                    Html5QrcodeSupportedFormats.CODE_93,
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.DATA_MATRIX,
-                    Html5QrcodeSupportedFormats.MAXICODE,
-                    Html5QrcodeSupportedFormats.ITF,
-                    Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.EAN_8,
-                    Html5QrcodeSupportedFormats.PDF_417,
-                    Html5QrcodeSupportedFormats.RSS_14,
-                    Html5QrcodeSupportedFormats.RSS_EXPANDED,
-                    Html5QrcodeSupportedFormats.UPC_A,
-                    Html5QrcodeSupportedFormats.UPC_E,
-                    Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION,
                 ],
                 qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    const qrboxSize = Math.max(220, Math.min(520, Math.floor(minEdge * 0.82)));
+                    const ratio = isMobileViewport ? 0.62 : 0.72;
+                    const minSize = isMobileViewport ? 180 : 220;
+                    const maxSize = isMobileViewport ? 360 : 520;
+                    const qrboxSize = Math.max(minSize, Math.min(maxSize, Math.floor(minEdge * ratio)));
                     return { width: qrboxSize, height: qrboxSize };
                 },
                 aspectRatio: isMobileViewport ? undefined : 1.0,
             };
 
             if (useRearCamera) {
-                await scannerRef.current.start(
-                    { facingMode: "environment" },
-                    config,
-                    processDecodedText,
-                    () => {}
-                );
+                const cameraCandidates: any[] = [
+                    {
+                        facingMode: { exact: 'environment' },
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                    },
+                    {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                    },
+                    { facingMode: 'environment' },
+                ];
+
+                let started = false;
+                let lastError: unknown = null;
+
+                for (const candidate of cameraCandidates) {
+                    try {
+                        await scannerRef.current.start(
+                            candidate,
+                            config,
+                            processDecodedText,
+                            () => {}
+                        );
+                        started = true;
+                        break;
+                    } catch (candidateError) {
+                        lastError = candidateError;
+                    }
+                }
+
+                if (!started && selectedCameraId) {
+                    await scannerRef.current.start(
+                        selectedCameraId,
+                        config,
+                        processDecodedText,
+                        () => {}
+                    );
+                    started = true;
+                }
+
+                if (!started) {
+                    throw lastError || new Error('Tidak ada kamera belakang yang tersedia.');
+                }
             } else if (selectedCameraId) {
                 await scannerRef.current.start(
                     selectedCameraId,
@@ -736,7 +762,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                             </button>
                         </div>
                         <p className={`text-xs ${isFullscreenScanner ? 'text-white/80' : 'text-gray-500'}`}>
-                            Tips: dekatkan barcode ke area tengah, jaga tangan stabil 1-2 detik, dan hindari glare lampu.
+                            Tips: mode scan cepat aktif (QR only). Arahkan QR tepat di kotak tengah dan tahan stabil 1-2 detik.
                         </p>
                     </div>
 

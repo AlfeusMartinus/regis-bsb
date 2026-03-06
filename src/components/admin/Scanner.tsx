@@ -33,6 +33,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
 
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const isProcessingRef = useRef(false);
+    const isStartingRef = useRef(false);
     const lastScannedRef = useRef<string | null>(null);
     const timeoutRef = useRef<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -364,22 +365,18 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
         }
     };
 
-    const startCamera = async () => {
-        if (!scannerRef.current) {
-            try {
-                scannerRef.current = new Html5Qrcode(readerId);
-                setScannerReady(true);
-            } catch (error) {
-                console.error('Failed to create scanner:', error);
-                setScanResult({
-                    status: 'error',
-                    message: 'Scanner belum siap. Coba refresh halaman.',
-                });
-                return;
-            }
+    /** Destroy the current scanner instance and create a fresh one. */
+    const recreateScanner = () => {
+        if (scannerRef.current) {
+            try { scannerRef.current.clear(); } catch { /* ignore */ }
+            scannerRef.current = null;
         }
+        scannerRef.current = new Html5Qrcode(readerId, { verbose: false });
+    };
 
-        if (isCameraRunning) return;
+    const startCamera = async () => {
+        if (isCameraRunning || isStartingRef.current) return;
+        isStartingRef.current = true;
 
         try {
             const config = {
@@ -421,44 +418,59 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                 let lastError: unknown = null;
 
                 for (const candidate of cameraCandidates) {
+                    // Re-create a fresh instance before each attempt so the
+                    // internal state machine is never left in a broken state.
+                    recreateScanner();
                     try {
-                        await scannerRef.current.start(
+                        await scannerRef.current!.start(
                             candidate,
                             config,
                             processDecodedText,
-                            () => {}
+                            () => { }
                         );
                         started = true;
                         break;
                     } catch (candidateError) {
                         lastError = candidateError;
+                        // Clean up the failed instance before re-trying.
+                        try { scannerRef.current?.clear(); } catch { /* ignore */ }
+                        scannerRef.current = null;
                     }
                 }
 
                 if (!started && selectedCameraId) {
-                    await scannerRef.current.start(
-                        selectedCameraId,
-                        config,
-                        processDecodedText,
-                        () => {}
-                    );
-                    started = true;
+                    recreateScanner();
+                    try {
+                        await scannerRef.current!.start(
+                            selectedCameraId,
+                            config,
+                            processDecodedText,
+                            () => { }
+                        );
+                        started = true;
+                    } catch (e) {
+                        lastError = e;
+                        try { scannerRef.current?.clear(); } catch { /* ignore */ }
+                        scannerRef.current = null;
+                    }
                 }
 
                 if (!started) {
                     throw lastError || new Error('Tidak ada kamera belakang yang tersedia.');
                 }
             } else if (selectedCameraId) {
-                await scannerRef.current.start(
+                recreateScanner();
+                await scannerRef.current!.start(
                     selectedCameraId,
                     config,
                     processDecodedText,
-                    () => {}
+                    () => { }
                 );
             } else {
-                throw new Error("Tidak ada kamera yang dipilih.");
+                throw new Error('Tidak ada kamera yang dipilih.');
             }
 
+            setScannerReady(true);
             setIsCameraRunning(true);
         } catch (error) {
             console.error('Failed to start camera:', error);
@@ -466,14 +478,20 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                 status: 'error',
                 message: 'Kamera gagal aktif. Pastikan izin kamera sudah diberikan.',
             });
+        } finally {
+            isStartingRef.current = false;
         }
     };
 
     const stopCamera = async () => {
-        if (!scannerRef.current || !isCameraRunning) return;
+        if (!isCameraRunning) return;
 
         try {
-            await scannerRef.current.stop();
+            if (scannerRef.current) {
+                await scannerRef.current.stop();
+                try { scannerRef.current.clear(); } catch { /* ignore */ }
+                scannerRef.current = null;
+            }
         } catch {
             // ignore stop errors
         }
@@ -552,20 +570,20 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                     label: camera.label || `Camera ${camera.id}`,
                 }));
                 setCameraList(formatted);
-                
-                const backCamera = formatted.find(cam => 
-                    cam.label.toLowerCase().includes('back') || 
+
+                const backCamera = formatted.find(cam =>
+                    cam.label.toLowerCase().includes('back') ||
                     cam.label.toLowerCase().includes('rear') ||
                     cam.label.toLowerCase().includes('environment')
                 );
 
                 if (backCamera) {
-                  setSelectedCameraId(backCamera.id);
-                  setUseRearCamera(true);
+                    setSelectedCameraId(backCamera.id);
+                    setUseRearCamera(true);
                 } else if (formatted[0]) {
-                  setSelectedCameraId(formatted[0].id);
+                    setSelectedCameraId(formatted[0].id);
                 }
-                
+
                 setScannerReady(true);
             } catch (error) {
                 console.error('Failed to initialize scanner:', error);
@@ -595,16 +613,14 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             supabase.removeChannel(channel);
 
-            if (scannerRef.current) {
-                scannerRef.current.stop().catch(() => {
-                    // ignore
-                });
-                try {
-                    scannerRef.current.clear();
-                } catch {
-                    // ignore clear errors
-                }
+            const scanner = scannerRef.current;
+            if (scanner) {
                 scannerRef.current = null;
+                scanner.stop()
+                    .catch(() => { /* ignore */ })
+                    .finally(() => {
+                        try { scanner.clear(); } catch { /* ignore */ }
+                    });
             }
         };
     }, []);
@@ -693,34 +709,34 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                         </div>
 
                         <div className="flex flex-col md:flex-row md:items-center gap-2">
-                          <label className={`flex items-center gap-2 text-sm px-3 py-2 border rounded-lg cursor-pointer ${isFullscreenScanner
-                              ? 'text-white bg-white/10 border-white/30'
-                              : 'text-gray-700 bg-gray-50 border-gray-200'}`}>
-                            <input
-                              type="checkbox"
-                              checked={useRearCamera}
-                              onChange={(e) => setUseRearCamera(e.target.checked)}
-                              className="w-4 h-4 text-emerald-600 rounded border-gray-300"
-                            />
-                            Kamera Belakang (Auto)
-                          </label>
+                            <label className={`flex items-center gap-2 text-sm px-3 py-2 border rounded-lg cursor-pointer ${isFullscreenScanner
+                                ? 'text-white bg-white/10 border-white/30'
+                                : 'text-gray-700 bg-gray-50 border-gray-200'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={useRearCamera}
+                                    onChange={(e) => setUseRearCamera(e.target.checked)}
+                                    className="w-4 h-4 text-emerald-600 rounded border-gray-300"
+                                />
+                                Kamera Belakang (Auto)
+                            </label>
 
-                          {!useRearCamera && (
-                                                        <select
-                                value={selectedCameraId}
-                                onChange={(e) => {
-                                  setSelectedCameraId(e.target.value);
-                                  setUseRearCamera(false);
-                                }}
-                                                                className="h-10 px-3 py-2 border rounded-lg bg-white text-sm w-full md:w-72"
-                                disabled={cameraList.length === 0}
-                            >
-                                {cameraList.length === 0 && <option value="">Tidak ada kamera</option>}
-                                {cameraList.map((camera) => (
-                                    <option key={camera.id} value={camera.id}>{camera.label}</option>
-                                ))}
-                            </select>
-                          )}
+                            {!useRearCamera && (
+                                <select
+                                    value={selectedCameraId}
+                                    onChange={(e) => {
+                                        setSelectedCameraId(e.target.value);
+                                        setUseRearCamera(false);
+                                    }}
+                                    className="h-10 px-3 py-2 border rounded-lg bg-white text-sm w-full md:w-72"
+                                    disabled={cameraList.length === 0}
+                                >
+                                    {cameraList.length === 0 && <option value="">Tidak ada kamera</option>}
+                                    {cameraList.map((camera) => (
+                                        <option key={camera.id} value={camera.id}>{camera.label}</option>
+                                    ))}
+                                </select>
+                            )}
 
                             <button
                                 onClick={startCamera}

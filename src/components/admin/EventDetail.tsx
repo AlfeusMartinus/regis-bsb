@@ -5,10 +5,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { RegistrantList } from './RegistrantList';
 import { Scanner } from './Scanner';
 import { WAReminder } from './WAReminder'; // Import WAReminder
+import { ManualSponsorRegistration } from './ManualSponsorRegistration';
 import { AccessDenied } from '../ui/AccessDenied';
 import {
     Loader2, ArrowLeft, Calendar, MapPin, ExternalLink,
-    Users, DollarSign, Clock, Globe, FileText, CheckCircle, QrCode, MessageCircle, // Add MessageCircle
+    Users, DollarSign, Clock, Globe, FileText, CheckCircle, QrCode, MessageCircle, UserPlus
 } from 'lucide-react';
 
 const SUCCESS_STATUSES = ['paid', 'settlement', 'success'];
@@ -24,7 +25,7 @@ export const EventDetail: React.FC = () => {
 
     const canAccessScanner = role === 'superadmin' || canScan;
 
-    type TabType = 'info' | 'transactions' | 'paid-registrants' | 'scanner' | 'wa-reminder'; // Add 'wa-reminder' to TabType
+    type TabType = 'info' | 'transactions' | 'paid-registrants' | 'scanner' | 'wa-reminder' | 'sponsor-media'; // Add 'sponsor-media' to TabType
     const initialTab = (searchParams.get('tab') as TabType) || 'info';
     const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [event, setEvent] = useState<any>(null);
@@ -206,12 +207,20 @@ export const EventDetail: React.FC = () => {
                         </button>
                     )}
                     {role === 'superadmin' && (
-                        <button
-                            onClick={() => setActiveTab('wa-reminder')}
-                            className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'wa-reminder' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
-                        >
-                            <MessageCircle size={15} /> WA Reminder
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setActiveTab('wa-reminder')}
+                                className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'wa-reminder' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
+                            >
+                                <MessageCircle size={15} /> WA Reminder
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('sponsor-media')}
+                                className={`inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'sponsor-media' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'} `}
+                            >
+                                <UserPlus size={15} /> Add Sponsor/Media
+                            </button>
+                        </>
                     )}
                 </nav>
             </div>
@@ -273,6 +282,8 @@ export const EventDetail: React.FC = () => {
                     <Scanner fixedEventId={id} />
                 ) : activeTab === 'wa-reminder' && role === 'superadmin' ? (
                     <WAReminder fixedEventId={id} />
+                ) : activeTab === 'sponsor-media' && role === 'superadmin' ? (
+                    <ManualSponsorRegistration fixedEventId={id || ''} />
                 ) : (
                     <AccessDenied />
                 )}

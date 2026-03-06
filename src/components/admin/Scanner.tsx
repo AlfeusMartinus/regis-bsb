@@ -186,7 +186,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
 
         const { data: exactMatch, error: exactError } = await supabase
             .from('registrations')
-            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .select('id, name, status, is_attended, email, event_id')
             .eq('event_id', eventId)
             .ilike('email', cleanedEmail)
             .limit(1);
@@ -196,7 +196,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
 
         const { data: fuzzyMatch, error: fuzzyError } = await supabase
             .from('registrations')
-            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .select('id, name, status, is_attended, email, event_id')
             .eq('event_id', eventId)
             .ilike('email', `%${cleanedEmail}%`)
             .limit(1);
@@ -209,20 +209,12 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
         const cleanedIdentifier = ticketIdentifier.trim();
         if (!cleanedIdentifier) return null;
 
-        const { data: byTicket, error: ticketError } = await supabase
-            .from('registrations')
-            .select('id, name, status, is_attended, email, event_id, ticket_id')
-            .eq('event_id', eventId)
-            .eq('ticket_id', cleanedIdentifier)
-            .limit(1);
-
-        if (ticketError) throw ticketError;
-        if (byTicket?.[0]) return byTicket[0];
-
+        // Some environments don't have ticket_id column yet.
+        // Use TICKET-<registration_id> fallback to keep scanner working.
         const registrationId = cleanedIdentifier.replace(/^TICKET-/i, '');
         const { data: byId, error: idError } = await supabase
             .from('registrations')
-            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .select('id, name, status, is_attended, email, event_id')
             .eq('event_id', eventId)
             .eq('id', registrationId)
             .limit(1);
@@ -267,7 +259,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
             if (isEmail) {
                 const { data: fallbackByEmail, error: fallbackError } = await supabase
                     .from('registrations')
-                    .select('id, name, status, is_attended, email, event_id, ticket_id, created_at')
+                    .select('id, name, status, is_attended, email, event_id, created_at')
                     .ilike('email', `%${identifier}%`)
                     .order('created_at', { ascending: false })
                     .limit(5);
@@ -291,7 +283,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
 
         let legacyQuery = supabase
             .from('registrations')
-            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .select('id, name, status, is_attended, email, event_id')
             .ilike('email', `%${extractedEmail}%`)
             .order('created_at', { ascending: false });
 
@@ -442,9 +434,6 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
             }
 
             setIsCameraRunning(true);
-            if (isMobileViewport) {
-                setIsFullscreenScanner(true);
-            }
         } catch (error) {
             console.error('Failed to start camera:', error);
             setScanResult({
@@ -600,11 +589,11 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
     };
 
     const scannerCardClass = isFullscreenScanner
-        ? 'fixed inset-0 z-50 bg-black text-white overflow-hidden'
+        ? 'fixed inset-0 z-50 bg-black text-white overflow-y-auto'
         : 'xl:col-span-2 bg-white rounded-xl border border-gray-200 overflow-hidden';
 
     const scannerViewportClass = isFullscreenScanner
-        ? 'w-full h-[calc(100vh-210px)] overflow-hidden bg-black'
+        ? 'w-full h-[65dvh] min-h-[360px] overflow-hidden bg-black'
         : 'w-full min-h-[320px] md:min-h-[420px] overflow-hidden rounded-lg bg-black';
 
     return (
@@ -662,7 +651,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                 <div className={scannerCardClass}>
-                    <div className={`p-4 border-b flex flex-col gap-3 ${isFullscreenScanner ? 'border-white/20' : 'border-gray-100'}`}>
+                    <div className={`p-4 border-b flex flex-col gap-3 ${isFullscreenScanner ? 'border-white/20 sticky top-0 bg-black/95 backdrop-blur-sm' : 'border-gray-100'}`}>
                         <div className="flex items-center justify-between gap-3">
                             <h2 className={`font-semibold ${isFullscreenScanner ? 'text-white' : 'text-gray-800'}`}>Scanner</h2>
                             {isMobileViewport && (
@@ -751,7 +740,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                         </p>
                     </div>
 
-                    <div className="p-4">
+                    <div className={`p-4 ${isFullscreenScanner ? 'pb-8' : ''}`}>
                         {!scannerReady && (
                             <div className="mb-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                                 Menyiapkan scanner...

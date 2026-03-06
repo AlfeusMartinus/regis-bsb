@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { supabase } from '../../lib/supabase';
 import { CheckCircle2, XCircle, Loader2, Camera, Upload, StopCircle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -24,6 +25,8 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
     const [cameraList, setCameraList] = useState<Array<{ id: string; label: string }>>([]);
     const [selectedCameraId, setSelectedCameraId] = useState<string>('');
     const [useRearCamera, setUseRearCamera] = useState(true);
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
+    const [isFullscreenScanner, setIsFullscreenScanner] = useState(false);
     const [isCameraRunning, setIsCameraRunning] = useState(false);
     const [loadingEvents, setLoadingEvents] = useState(true);
     const [scannerReady, setScannerReady] = useState(false);
@@ -177,6 +180,57 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
         return match ? match[0] : '';
     };
 
+    const findRegistrationByEmail = async (eventId: string, email: string) => {
+        const cleanedEmail = email.trim();
+        if (!cleanedEmail) return null;
+
+        const { data: exactMatch, error: exactError } = await supabase
+            .from('registrations')
+            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .eq('event_id', eventId)
+            .ilike('email', cleanedEmail)
+            .limit(1);
+
+        if (exactError) throw exactError;
+        if (exactMatch?.[0]) return exactMatch[0];
+
+        const { data: fuzzyMatch, error: fuzzyError } = await supabase
+            .from('registrations')
+            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .eq('event_id', eventId)
+            .ilike('email', `%${cleanedEmail}%`)
+            .limit(1);
+
+        if (fuzzyError) throw fuzzyError;
+        return fuzzyMatch?.[0] || null;
+    };
+
+    const findRegistrationByTicket = async (eventId: string, ticketIdentifier: string) => {
+        const cleanedIdentifier = ticketIdentifier.trim();
+        if (!cleanedIdentifier) return null;
+
+        const { data: byTicket, error: ticketError } = await supabase
+            .from('registrations')
+            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .eq('event_id', eventId)
+            .eq('ticket_id', cleanedIdentifier)
+            .limit(1);
+
+        if (ticketError) throw ticketError;
+        if (byTicket?.[0]) return byTicket[0];
+
+        const registrationId = cleanedIdentifier.replace(/^TICKET-/i, '');
+        const { data: byId, error: idError } = await supabase
+            .from('registrations')
+            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .eq('event_id', eventId)
+            .eq('id', registrationId)
+            .limit(1);
+
+        if (idError) throw idError;
+        return byId?.[0] || null;
+    };
+
     const fetchRegistrationByPayload = async (decodedText: string) => {
         const parsed = parseQrPayload(decodedText);
 
@@ -201,26 +255,20 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                 payloadEventId,
             ].filter(Boolean)));
 
-            const emailQueryValue = isEmail ? identifier : '';
-
             for (const eventId of candidateEventIds) {
-                const { data: byEmail, error: emailError } = await supabase
-                    .from('registrations')
-                    .select('id, name, status, is_attended, email, event_id')
-                    .eq('event_id', eventId)
-                    .ilike('email', emailQueryValue)
-                    .limit(1);
+                const byIdentifier = isEmail
+                    ? await findRegistrationByEmail(eventId, identifier)
+                    : await findRegistrationByTicket(eventId, identifier);
 
-                if (emailError) throw emailError;
-                if (byEmail?.[0]) return byEmail[0];
+                if (byIdentifier) return byIdentifier;
             }
 
             // Fallback: find by email globally (for old tickets with mismatched event id/slug)
             if (isEmail) {
                 const { data: fallbackByEmail, error: fallbackError } = await supabase
                     .from('registrations')
-                    .select('id, name, status, is_attended, email, event_id, created_at')
-                    .ilike('email', identifier)
+                    .select('id, name, status, is_attended, email, event_id, ticket_id, created_at')
+                    .ilike('email', `%${identifier}%`)
                     .order('created_at', { ascending: false })
                     .limit(5);
 
@@ -243,8 +291,8 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
 
         let legacyQuery = supabase
             .from('registrations')
-            .select('id, name, status, is_attended, email, event_id')
-            .ilike('email', extractedEmail)
+            .select('id, name, status, is_attended, email, event_id, ticket_id')
+            .ilike('email', `%${extractedEmail}%`)
             .order('created_at', { ascending: false });
 
         if (selectedEventId) {
@@ -342,14 +390,37 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
         if (isCameraRunning) return;
 
         try {
-            const config = { 
-                fps: 10, 
+            const config = {
+                fps: 18,
+                disableFlip: false,
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true,
+                },
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.AZTEC,
+                    Html5QrcodeSupportedFormats.CODABAR,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.CODE_93,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.DATA_MATRIX,
+                    Html5QrcodeSupportedFormats.MAXICODE,
+                    Html5QrcodeSupportedFormats.ITF,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.PDF_417,
+                    Html5QrcodeSupportedFormats.RSS_14,
+                    Html5QrcodeSupportedFormats.RSS_EXPANDED,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION,
+                ],
                 qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    const qrboxSize = Math.floor(minEdge * 0.7);
+                    const qrboxSize = Math.max(220, Math.min(520, Math.floor(minEdge * 0.82)));
                     return { width: qrboxSize, height: qrboxSize };
                 },
-                aspectRatio: 1.0
+                aspectRatio: isMobileViewport ? undefined : 1.0,
             };
 
             if (useRearCamera) {
@@ -369,8 +440,11 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
             } else {
                 throw new Error("Tidak ada kamera yang dipilih.");
             }
-            
+
             setIsCameraRunning(true);
+            if (isMobileViewport) {
+                setIsFullscreenScanner(true);
+            }
         } catch (error) {
             console.error('Failed to start camera:', error);
             setScanResult({
@@ -389,6 +463,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
             // ignore stop errors
         }
         setIsCameraRunning(false);
+        setIsFullscreenScanner(false);
     };
 
     const handleUploadFile = async (file: File) => {
@@ -443,6 +518,17 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
     };
 
     useEffect(() => {
+        const media = window.matchMedia('(max-width: 767px)');
+        const onViewportChange = () => {
+            setIsMobileViewport(media.matches);
+            if (!media.matches) {
+                setIsFullscreenScanner(false);
+            }
+        };
+
+        onViewportChange();
+        media.addEventListener('change', onViewportChange);
+
         const init = async () => {
             try {
                 const cameras = await Html5Qrcode.getCameras();
@@ -490,6 +576,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
             .subscribe();
 
         return () => {
+            media.removeEventListener('change', onViewportChange);
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             supabase.removeChannel(channel);
 
@@ -511,6 +598,14 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
         setScanResult({ status: 'idle', message: 'Tunggu scan...' });
         lastScannedRef.current = null;
     };
+
+    const scannerCardClass = isFullscreenScanner
+        ? 'fixed inset-0 z-50 bg-black text-white overflow-hidden'
+        : 'xl:col-span-2 bg-white rounded-xl border border-gray-200 overflow-hidden';
+
+    const scannerViewportClass = isFullscreenScanner
+        ? 'w-full h-[calc(100vh-210px)] overflow-hidden bg-black'
+        : 'w-full min-h-[320px] md:min-h-[420px] overflow-hidden rounded-lg bg-black';
 
     return (
         <div className="w-full space-y-5">
@@ -566,12 +661,26 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-100 flex flex-col gap-3">
-                        <h2 className="font-semibold text-gray-800">Scanner</h2>
+                <div className={scannerCardClass}>
+                    <div className={`p-4 border-b flex flex-col gap-3 ${isFullscreenScanner ? 'border-white/20' : 'border-gray-100'}`}>
+                        <div className="flex items-center justify-between gap-3">
+                            <h2 className={`font-semibold ${isFullscreenScanner ? 'text-white' : 'text-gray-800'}`}>Scanner</h2>
+                            {isMobileViewport && (
+                                <button
+                                    onClick={() => setIsFullscreenScanner((prev) => !prev)}
+                                    className={`h-9 px-3 text-xs rounded-lg border ${isFullscreenScanner
+                                        ? 'border-white/40 text-white bg-white/10'
+                                        : 'border-gray-200 text-gray-700 bg-gray-50'}`}
+                                >
+                                    {isFullscreenScanner ? 'Keluar Full Screen' : 'Full Screen'}
+                                </button>
+                            )}
+                        </div>
 
                         <div className="flex flex-col md:flex-row md:items-center gap-2">
-                          <label className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 px-3 py-2 border rounded-lg cursor-pointer">
+                          <label className={`flex items-center gap-2 text-sm px-3 py-2 border rounded-lg cursor-pointer ${isFullscreenScanner
+                              ? 'text-white bg-white/10 border-white/30'
+                              : 'text-gray-700 bg-gray-50 border-gray-200'}`}>
                             <input
                               type="checkbox"
                               checked={useRearCamera}
@@ -582,13 +691,13 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                           </label>
 
                           {!useRearCamera && (
-                            <select
+                                                        <select
                                 value={selectedCameraId}
                                 onChange={(e) => {
                                   setSelectedCameraId(e.target.value);
                                   setUseRearCamera(false);
                                 }}
-                                className="h-10 px-3 py-2 border rounded-lg bg-white text-sm w-full md:w-72"
+                                                                className="h-10 px-3 py-2 border rounded-lg bg-white text-sm w-full md:w-72"
                                 disabled={cameraList.length === 0}
                             >
                                 {cameraList.length === 0 && <option value="">Tidak ada kamera</option>}
@@ -637,7 +746,9 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                                 Upload QR
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500">Tips: gunakan Upload QR jika kamera sulit fokus atau pencahayaan kurang.</p>
+                        <p className={`text-xs ${isFullscreenScanner ? 'text-white/80' : 'text-gray-500'}`}>
+                            Tips: dekatkan barcode ke area tengah, jaga tangan stabil 1-2 detik, dan hindari glare lampu.
+                        </p>
                     </div>
 
                     <div className="p-4">
@@ -646,11 +757,11 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                                 Menyiapkan scanner...
                             </div>
                         )}
-                        <div id={readerId} className="w-full min-h-[300px] overflow-hidden rounded-lg bg-black" />
+                        <div id={readerId} className={scannerViewportClass} />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col justify-center min-h-[350px]">
+                <div className={`${isFullscreenScanner ? 'hidden xl:flex' : 'flex'} bg-white rounded-xl border border-gray-200 p-6 flex-col justify-center min-h-[350px]`}>
                     {isProcessing || isUploadProcessing ? (
                         <div className="flex flex-col items-center justify-center text-center p-6 space-y-4">
                             <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />

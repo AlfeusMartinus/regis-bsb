@@ -19,3 +19,23 @@
 .custom-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Improve html5-qrcode viewport rendering on mobile/full-screen mode */
+#scanner-reader {
+  position: relative;
+}
+
+#scanner-reader > div {
+  width: 100% !important;
+}
+
+#scanner-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+#scanner-reader img {
+  max-width: 100%;
+}

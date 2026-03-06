@@ -23,6 +23,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
     const [selectedEventId, setSelectedEventId] = useState<string>('');
     const [cameraList, setCameraList] = useState<Array<{ id: string; label: string }>>([]);
     const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+    const [useRearCamera, setUseRearCamera] = useState(true);
     const [isCameraRunning, setIsCameraRunning] = useState(false);
     const [loadingEvents, setLoadingEvents] = useState(true);
     const [scannerReady, setScannerReady] = useState(false);
@@ -324,8 +325,6 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
     };
 
     const startCamera = async () => {
-        if (!selectedCameraId) return;
-
         if (!scannerRef.current) {
             try {
                 scannerRef.current = new Html5Qrcode(readerId);
@@ -343,14 +342,34 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
         if (isCameraRunning) return;
 
         try {
-            await scannerRef.current.start(
-                selectedCameraId,
-                { fps: 10, qrbox: { width: 260, height: 260 } },
-                processDecodedText,
-                () => {
-                    // keep scanning silently
-                }
-            );
+            const config = { 
+                fps: 10, 
+                qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    const qrboxSize = Math.floor(minEdge * 0.7);
+                    return { width: qrboxSize, height: qrboxSize };
+                },
+                aspectRatio: 1.0
+            };
+
+            if (useRearCamera) {
+                await scannerRef.current.start(
+                    { facingMode: "environment" },
+                    config,
+                    processDecodedText,
+                    () => {}
+                );
+            } else if (selectedCameraId) {
+                await scannerRef.current.start(
+                    selectedCameraId,
+                    config,
+                    processDecodedText,
+                    () => {}
+                );
+            } else {
+                throw new Error("Tidak ada kamera yang dipilih.");
+            }
+            
             setIsCameraRunning(true);
         } catch (error) {
             console.error('Failed to start camera:', error);
@@ -432,9 +451,20 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                     label: camera.label || `Camera ${camera.id}`,
                 }));
                 setCameraList(formatted);
-                if (formatted[0]) {
-                    setSelectedCameraId(formatted[0].id);
+                
+                const backCamera = formatted.find(cam => 
+                    cam.label.toLowerCase().includes('back') || 
+                    cam.label.toLowerCase().includes('rear') ||
+                    cam.label.toLowerCase().includes('environment')
+                );
+
+                if (backCamera) {
+                  setSelectedCameraId(backCamera.id);
+                  setUseRearCamera(true);
+                } else if (formatted[0]) {
+                  setSelectedCameraId(formatted[0].id);
                 }
+                
                 setScannerReady(true);
             } catch (error) {
                 console.error('Failed to initialize scanner:', error);
@@ -541,9 +571,23 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                         <h2 className="font-semibold text-gray-800">Scanner</h2>
 
                         <div className="flex flex-col md:flex-row md:items-center gap-2">
+                          <label className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 px-3 py-2 border rounded-lg cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={useRearCamera}
+                              onChange={(e) => setUseRearCamera(e.target.checked)}
+                              className="w-4 h-4 text-emerald-600 rounded border-gray-300"
+                            />
+                            Kamera Belakang (Auto)
+                          </label>
+
+                          {!useRearCamera && (
                             <select
                                 value={selectedCameraId}
-                                onChange={(e) => setSelectedCameraId(e.target.value)}
+                                onChange={(e) => {
+                                  setSelectedCameraId(e.target.value);
+                                  setUseRearCamera(false);
+                                }}
                                 className="h-10 px-3 py-2 border rounded-lg bg-white text-sm w-full md:w-72"
                                 disabled={cameraList.length === 0}
                             >
@@ -552,10 +596,11 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                                     <option key={camera.id} value={camera.id}>{camera.label}</option>
                                 ))}
                             </select>
+                          )}
 
                             <button
                                 onClick={startCamera}
-                                disabled={!selectedCameraId || isCameraRunning}
+                                disabled={(!useRearCamera && !selectedCameraId) || isCameraRunning}
                                 className="h-10 inline-flex items-center justify-center gap-2 px-4 text-sm rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
                             >
                                 <Camera size={16} />
@@ -601,7 +646,7 @@ export const Scanner: React.FC<ScannerProps> = ({ fixedEventId }) => {
                                 Menyiapkan scanner...
                             </div>
                         )}
-                        <div id={readerId} className="w-full min-h-[340px]" />
+                        <div id={readerId} className="w-full min-h-[300px] overflow-hidden rounded-lg bg-black" />
                     </div>
                 </div>
 

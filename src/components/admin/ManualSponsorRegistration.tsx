@@ -10,6 +10,8 @@ export const ManualSponsorRegistration: React.FC<ManualSponsorRegistrationProps>
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
+    const [institution, setInstitution] = useState('');
+    const [role, setRole] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
@@ -41,18 +43,20 @@ export const ManualSponsorRegistration: React.FC<ManualSponsorRegistrationProps>
                 amount: 0,
                 status: 'settlement',
                 current_status: 'professional',
-                institution: 'Sponsor & Media',
-                role: 'Sponsor & Media',
+                institution: institution,
+                role: role,
                 info_source: 'Sponsor & Media',
                 payment_link_id: `MANUAL-SPONSOR-${Date.now()}`
             });
 
             if (error) throw error;
 
-            setSuccessMessage(`Berhasil menambahkan ${name} sebagai Sponsor & Media.`);
+            setSuccessMessage(`Berhasil menambahkan ${name} sebagai ${role} dari ${institution}.`);
             setName('');
             setEmail('');
             setPhone('');
+            setInstitution('');
+            setRole('');
         } catch (error: any) {
             console.error('Error adding sponsor:', error);
             setErrorMessage(error.message || 'Gagal menambahkan data.');
@@ -124,10 +128,32 @@ export const ManualSponsorRegistration: React.FC<ManualSponsorRegistrationProps>
                     />
                 </div>
 
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Instansi / Perusahaan</label>
+                    <input
+                        type="text"
+                        required
+                        value={institution}
+                        onChange={(e) => setInstitution(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors outline-none"
+                        placeholder="Contoh: PT. Sponsor Media"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Peran / Jabatan / Posisi</label>
+                    <input
+                        type="text"
+                        required
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors outline-none"
+                        placeholder="Contoh: Media Partner, Sponsor, dll"
+                    />
+                </div>
+
                 <div className="pt-2 border-t border-gray-100 flex items-center gap-4 text-sm text-gray-500 mb-2">
-                    <p>Status: <strong>Profesional</strong></p>
-                    <p>Role: <strong>Sponsor & Media</strong></p>
-                    <p>Amount: <strong>0 (Gratis)</strong></p>
+                    <p>Jumlah Pembayaran: <strong>0 (Gratis)</strong></p>
                 </div>
 
                 <button

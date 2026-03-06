@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
 
-    // Generate a unique ticket ID if none provided
+    // Human-readable ticket label for email body / calendar UID.
     const finalTicketId = ticketId || `TICKET-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
     try {
@@ -69,8 +69,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'END:VCALENDAR'
         ].join('\r\n');
 
-        // Encode payload: checkin:eventId:email
-        const checkinPayload = eventId ? `checkin:${eventId}:${email}` : finalTicketId;
+        // Canonical QR payload used by scanner: checkin:<eventId>:<email>
+        // Email is normalized+encoded to avoid parsing issues with '+' and special chars.
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const normalizedEventId = eventId ? String(eventId).trim() : 'unknown';
+        const checkinPayload = `checkin:${normalizedEventId}:${encodeURIComponent(normalizedEmail)}`;
 
         // Generate QR Code as a Buffer
         const qrCodeBuffer = await QRCode.toBuffer(checkinPayload, {

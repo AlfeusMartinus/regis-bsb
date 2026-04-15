@@ -23,6 +23,10 @@ interface EventFormHelper {
     speakers: Speaker[];
     moderator: Speaker;
     minimum_donation?: string;
+    // Session quota fields
+    ticket_price?: string;
+    session1_quota?: string;
+    session2_quota?: string;
 }
 
 const formatCurrency = (value: string) => {
@@ -98,6 +102,10 @@ export const CreateEvent: React.FC = () => {
                 return { ...speaker, photo_url: photoUrl };
             }));
 
+            const s1Quota = data.session1_quota ? Number(data.session1_quota) : 110;
+            const s2Quota = data.session2_quota ? Number(data.session2_quota) : 110;
+            const tPrice  = data.ticket_price   ? Number(data.ticket_price.replace(/\./g, ''))   : 35000;
+
             const { error } = await supabase.from('events').insert({
                 title: data.title,
                 slug: data.slug,
@@ -110,6 +118,11 @@ export const CreateEvent: React.FC = () => {
                 speakers: speakersData,
                 moderator: moderatorData,
                 minimum_donation: data.minimum_donation ? Number(data.minimum_donation.replace(/\./g, '')) : 1000,
+                ticket_price:       tPrice,
+                session1_quota:     s1Quota,
+                session2_quota:     s2Quota,
+                session1_available: s1Quota,
+                session2_available: s2Quota,
                 is_published: isPublished
             });
 
@@ -151,22 +164,46 @@ export const CreateEvent: React.FC = () => {
                         <input type="datetime-local" {...register('date_time', { required: true })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Minimum Donation (IDR)</label>
+                        <label className="block text-sm font-medium text-gray-700">Harga Tiket (IDR)</label>
                         <div className="relative mt-1">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">Rp</span>
                             <input
-                                {...register('minimum_donation')}
+                                {...register('ticket_price')}
                                 onChange={(e) => {
                                     const formatted = formatCurrency(e.target.value);
-                                    setValue('minimum_donation', formatted);
+                                    setValue('ticket_price', formatted);
                                 }}
-                                placeholder="1.000"
+                                placeholder="35.000"
                                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2 pl-9"
                                 type="text"
                                 inputMode="numeric"
                             />
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Default: 1.000</p>
+                        <p className="text-xs text-gray-500 mt-1">Default: 35.000</p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Kuota Sesi 1</label>
+                        <input
+                            {...register('session1_quota')}
+                            type="number"
+                            min="1"
+                            max="500"
+                            placeholder="110"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Default: 110 peserta</p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Kuota Sesi 2</label>
+                        <input
+                            {...register('session2_quota')}
+                            type="number"
+                            min="1"
+                            max="500"
+                            placeholder="110"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary border p-2"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Default: 110 peserta</p>
                     </div>
                 </div>
 

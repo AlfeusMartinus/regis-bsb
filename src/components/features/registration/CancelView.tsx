@@ -28,7 +28,7 @@ export const CancelView: React.FC<CancelViewProps> = ({ onRetry }) => {
                         Pembayaran Dibatalkan
                     </h1>
                     <p className="mb-8 text-base text-gray-500 dark:text-gray-400 max-w-[360px] leading-relaxed">
-                        Sepertinya Anda membatalkan proses pembayaran. Jangan khawatir, data pendaftaran Anda masih tersimpan.
+                        Pembayaran tiket Anda dibatalkan atau melewati batas waktu. Slot yang telah direservasi akan dibebaskan kembali. Anda dapat mencoba mendaftar ulang.
                     </p>
 
                     <div className="flex w-full flex-col gap-4">

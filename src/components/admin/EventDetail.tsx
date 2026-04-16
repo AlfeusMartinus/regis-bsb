@@ -74,10 +74,10 @@ export const EventDetail: React.FC = () => {
         }
         setEvent(eventData);
 
-        // Only fetch summary counts (not full list — RegistrantList handles its own data)
+        // Fetch summary counts including session & status for quota analytics
         const { data: regsData } = await supabase
             .from('registrations')
-            .select('id, status, amount')
+            .select('id, status, amount, session')
             .eq('event_id', id);
 
         setRegistrants(regsData || []);
@@ -104,13 +104,25 @@ export const EventDetail: React.FC = () => {
     }
 
     // ── Metrics ────────────────────────────────────────────────────────────────
-    const paid = registrants.filter(r => SUCCESS_STATUSES.includes(r.status?.toLowerCase()));
+    const paid    = registrants.filter(r => SUCCESS_STATUSES.includes(r.status?.toLowerCase()));
     const pending = registrants.filter(r => r.status?.toLowerCase() === 'pending');
     const expired = registrants.filter(r => r.status?.toLowerCase() === 'expired');
-    const totalRevenue = paid.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const conversionRate = registrants.length
-        ? Math.round((paid.length / registrants.length) * 100)
-        : 0;
+    const totalRevenue   = paid.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
+
+    // ── Session-level quota breakdown ──────────────────────────────────────────
+    const s1Quota     = event.session1_quota     ?? 0;
+    const s2Quota     = event.session2_quota     ?? 0;
+    const s1Available = event.session1_available ?? 0;
+    const s2Available = event.session2_available ?? 0;
+    const totalQuota     = s1Quota + s2Quota;
+    const totalAvailable = s1Available + s2Available;
+
+
+    const s1Paid    = registrants.filter(r => r.session === 'session1' && SUCCESS_STATUSES.includes(r.status?.toLowerCase())).length;
+    const s1Pending = registrants.filter(r => r.session === 'session1' && r.status?.toLowerCase() === 'pending').length;
+    const s2Paid    = registrants.filter(r => r.session === 'session2' && SUCCESS_STATUSES.includes(r.status?.toLowerCase())).length;
+    const s2Pending = registrants.filter(r => r.session === 'session2' && r.status?.toLowerCase() === 'pending').length;
 
     return (
         <div className="max-w-6xl mx-auto space-y-5 p-4 md:p-6">
@@ -160,10 +172,10 @@ export const EventDetail: React.FC = () => {
             {/* Metrics */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
-                    { label: 'Total Registrasi', value: registrants.length, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                    { label: 'Pembayaran Lunas', value: paid.length, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-                    { label: 'Total Revenue', value: currency(totalRevenue), icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { label: 'Konversi', value: `${conversionRate}%`, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+                    { label: 'Total Registrasi',  value: registrants.length, icon: Users,       color: 'text-indigo-600',  bg: 'bg-indigo-50' },
+                    { label: 'Pembayaran Lunas',  value: paid.length,        icon: CheckCircle,  color: 'text-green-600',   bg: 'bg-green-50' },
+                    { label: 'Total Revenue',     value: currency(totalRevenue), icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                    { label: 'Sisa Kuota Total',  value: `${totalAvailable} / ${totalQuota}`, icon: Clock, color: 'text-amber-600',  bg: 'bg-amber-50' },
                 ].map(({ label, value, icon: Icon, color, bg }) => (
                     <div key={label} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm">
                         <div className={`${bg} rounded-lg p-2.5`}>
@@ -176,6 +188,64 @@ export const EventDetail: React.FC = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Session Quota Cards */}
+            {(s1Quota > 0 || s2Quota > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                        { label: 'Sesi 1', quota: s1Quota, available: s1Available, paid: s1Paid, pending: s1Pending },
+                        { label: 'Sesi 2', quota: s2Quota, available: s2Available, paid: s2Paid, pending: s2Pending },
+                    ].map(({ label, quota, available, paid: paidCount, pending: pendingCount }) => {
+                        const used   = quota - available;
+                        const pct    = quota > 0 ? Math.round((used / quota) * 100) : 0;
+                        const isFull = available <= 0;
+                        const isLow  = available > 0 && available <= 10;
+                        return (
+                            <div key={label} className="bg-white border border-gray-200 rounded-xl px-5 py-4 shadow-sm">
+                                {/* Header */}
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-sm font-bold text-gray-800">{label}</p>
+                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                        isFull ? 'bg-red-100 text-red-600' :
+                                        isLow  ? 'bg-orange-100 text-orange-600' :
+                                                 'bg-green-100 text-green-600'
+                                    }`}>
+                                        {isFull ? 'Penuh' : isLow ? `⚠ Sisa ${available}` : `${available} tersedia`}
+                                    </span>
+                                </div>
+
+                                {/* Progress bar */}
+                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
+                                    <div
+                                        className={`h-full rounded-full transition-all ${
+                                            isFull ? 'bg-red-400' : isLow ? 'bg-orange-400' : 'bg-primary'
+                                        }`}
+                                        style={{ width: `${pct}%` }}
+                                    />
+                                </div>
+
+                                {/* Slot breakdown */}
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="flex flex-col items-center p-2 rounded-lg bg-green-50 border border-green-100">
+                                        <span className="text-base font-bold text-green-700">{paidCount}</span>
+                                        <span className="text-[10px] font-medium text-green-600 mt-0.5">✓ Lunas</span>
+                                    </div>
+                                    <div className="flex flex-col items-center p-2 rounded-lg bg-yellow-50 border border-yellow-100">
+                                        <span className="text-base font-bold text-yellow-700">{pendingCount}</span>
+                                        <span className="text-[10px] font-medium text-yellow-600 mt-0.5">⏳ Pending</span>
+                                    </div>
+                                    <div className="flex flex-col items-center p-2 rounded-lg bg-gray-50 border border-gray-100">
+                                        <span className="text-base font-bold text-gray-600">{available}</span>
+                                        <span className="text-[10px] font-medium text-gray-500 mt-0.5">Slot Kosong</span>
+                                    </div>
+                                </div>
+
+                                <p className="text-xs text-gray-400 mt-2 text-right">{used}/{quota} slot terisi ({pct}%)</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Tab Navigation */}
             <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm">

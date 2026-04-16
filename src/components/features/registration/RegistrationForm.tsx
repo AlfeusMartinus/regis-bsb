@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { clsx } from 'clsx';
+import { Loader2, ArrowRight, ArrowLeft, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react';
+import { supabase } from '../../../lib/supabase';
+import { registrationSchema } from '../../../lib/validationSchema';
+import type { RegistrationFormData } from '../../../lib/validationSchema';
 import { Stepper } from '../../ui/Stepper';
 import { SuccessView } from './SuccessView';
 import { CancelView } from './CancelView';
-import { personalBaseSchema, donationSchema } from '../../../lib/validationSchema';
-import { z } from 'zod';
-import { clsx } from 'clsx';
-import { supabase } from '../../../lib/supabase';
+import type { SessionKey } from './SessionSelector';
 
-const registrationBaseSchema = personalBaseSchema.merge(donationSchema);
-type RegistrationFormData = z.infer<typeof registrationBaseSchema>;
-
-const formatCurrency = (value: string) => {
-    if (!value) return '';
-    const numberString = value.replace(/[^0-9]/g, '');
-    return numberString.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+// ─── Constants ────────────────────────────────────────────────────────────────
+const SESSION_LABELS: Record<SessionKey, string> = {
+    session1: 'Sesi 1',
+    session2: 'Sesi 2',
 };
+const STEPS = ['Data Diri', 'Konfirmasi & Bayar'];
+
+const formatIDR = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
 
 declare global {
     interface Window {
@@ -24,248 +26,191 @@ declare global {
     }
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
 interface RegistrationFormProps {
     eventId?: string;
     eventName?: string;
     eventSlug?: string;
-    minimumDonation?: number;
+    ticketPrice?: number;
     event?: any;
+    selectedSession: SessionKey | null;
+    onSessionSelect: (session: SessionKey) => void;
 }
 
-export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eventName, eventSlug, minimumDonation = 1000, event }) => {
+// ─── Input helper ─────────────────────────────────────────────────────────────
+const InputField: React.FC<{
+    id: string;
+    label: string;
+    required?: boolean;
+    error?: string;
+    children: React.ReactNode;
+}> = ({ id, label, required, error, children }) => (
+    <div className="flex flex-col gap-1.5">
+        <label htmlFor={id} className="text-sm font-semibold text-[#111814]">
+            {label}{required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        {children}
+        {error && (
+            <span className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                <AlertCircle size={11} />
+                {error}
+            </span>
+        )}
+    </div>
+);
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export const RegistrationForm: React.FC<RegistrationFormProps> = ({
+    eventId,
+    eventName,
+    eventSlug,
+    ticketPrice = 35_000,
+    event,
+    selectedSession,
+    onSessionSelect: _onSessionSelect,
+}) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
-
-    const steps = ["Data Diri", "Donasi"];
+    const [quotaError, setQuotaError] = useState<string | null>(null);
 
     const {
         register,
         trigger,
-        watch,
         getValues,
-        setValue,
-        formState: { errors }
+        formState: { errors },
     } = useForm<RegistrationFormData>({
-        resolver: zodResolver(registrationBaseSchema.superRefine((data, ctx) => {
-            // 1. Personal refinements
-            if (data.status === 'student' && !data.major) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Jurusan wajib diisi untuk Mahasiswa",
-                    path: ['major'],
-                });
-            }
-            if (data.status === 'professional' && !data.institution) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Instansi/Perusahaan wajib diisi untuk Profesional",
-                    path: ['institution'],
-                });
-            }
-            if (data.uses_external_peripherals === true && !data.mouse_brand) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Merek mouse wajib diisi",
-                    path: ['mouse_brand'],
-                });
-            }
-            if (data.work_device_factors.includes('Others') && !data.work_device_factors_others) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Sebutkan faktor lainnya",
-                    path: ['work_device_factors_others'],
-                });
-            }
-
-            // 2. Donation refinements
-            const rawAmount = data.amount.replace(/\./g, '');
-            if (rawAmount && parseInt(rawAmount) < minimumDonation) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: `Minimal donasi adalah Rp ${minimumDonation.toLocaleString('id-ID')}`,
-                    path: ['amount']
-                });
-            }
-        })),
+        resolver: zodResolver(registrationSchema),
         mode: 'onChange',
-        defaultValues: {
-            amount: '',
-            uses_external_peripherals: undefined,
-            work_device_factors: [],
-            mouse_brand: '',
-            work_device_factors_others: ''
-        }
     });
 
-    const status = watch('status');
-    const usesExternal = watch('uses_external_peripherals');
-    const selectedFactors = watch('work_device_factors') || [];
-    const infoSource = watch('info_source');
-
+    // ── Step 1: Validate & advance ──────────────────────────────────────────
     const handleNext = async () => {
-        let isValid = false;
-        if (currentStep === 1) {
-            isValid = await trigger([
-                'fullName',
-                'email',
-                'whatsapp',
-                'domicile',
-                'gender',
-                'status',
-                'university',
-                'major',
-                'institution',
-                'role',
-                'uses_external_peripherals',
-                'mouse_brand',
-                'work_device_factors',
-                'work_device_factors_others',
-                'info_source',
-                'info_source_others',
-                'share_data_sponsor'
-            ]);
-        }
-
-        if (isValid) {
-            setCurrentStep(prev => prev + 1);
-        }
-    };
-
-    const handleBack = () => {
-        if (currentStep > 1) {
-            setCurrentStep(prev => prev - 1);
-        }
-    };
-
-    const handleGeneratePayment = async () => {
-        const isValid = await trigger(['amount', 'prayer']);
+        setQuotaError(null);
+        const isValid = await trigger(['fullName', 'email', 'whatsapp', 'instansi', 'kategori']);
         if (!isValid) return;
 
+        if (!selectedSession) {
+            setQuotaError('Silakan pilih sesi terlebih dahulu di panel kiri.');
+            return;
+        }
+        setCurrentStep(2);
+    };
+
+    // ── Step 2: Submit & go to payment ─────────────────────────────────────
+    const handlePay = async () => {
+        if (!selectedSession) {
+            setQuotaError('Silakan pilih sesi terlebih dahulu.');
+            return;
+        }
+
         setIsLoading(true);
+        setQuotaError(null);
+
         try {
             const formData = getValues();
 
             const { data, error } = await supabase.functions.invoke('create-payment', {
                 body: {
-                    amount: parseInt(formData.amount.replace(/\./g, '')),
+                    amount: ticketPrice,
                     name: formData.fullName,
                     email: formData.email,
                     phone: formData.whatsapp,
-                    domicile: formData.domicile,
-                    prayer: formData.prayer,
-                    eventId: eventId,
-                    eventName: eventName,
-                    eventSlug: eventSlug,
-                    gender: formData.gender,
-                    currentStatus: formData.status,
-                    university: formData.status === 'student' ? formData.university : null,
-                    major: formData.status === 'student' ? formData.major : null,
-                    institution: formData.status === 'professional' ? formData.institution : null,
-                    role: formData.status === 'professional' ? formData.role : null,
-                    uses_external_peripherals: formData.uses_external_peripherals,
-                    mouse_brand: formData.mouse_brand,
-                    work_device_factors: formData.work_device_factors,
-                    work_device_factors_others: formData.work_device_factors_others,
-                    info_source: formData.info_source,
-                    info_source_others: formData.info_source_others,
-                    share_data_sponsor: formData.share_data_sponsor || false
-                }
+                    instansi: formData.instansi,
+                    kategori: formData.kategori,
+                    session: selectedSession,
+                    eventId,
+                    eventName,
+                    eventSlug,
+                    date_time: event?.date_time,
+                    location: event?.location,
+                    location_detail: event?.location_detail,
+                    location_link: event?.location_link,
+                },
             });
 
             if (error) {
-                console.error("Payment Function Error:", error);
-                alert("Gagal membuat pembayaran: " + error.message);
+                // Check for quota-full error from Edge Function
+                const msg = error.message || '';
+                if (msg.includes('kuota') || msg.includes('penuh') || msg.includes('quota')) {
+                    setQuotaError('Mohon maaf, kuota sesi ini baru saja penuh. Silakan pilih sesi lain.');
+                } else {
+                    setQuotaError('Gagal membuat transaksi: ' + msg);
+                }
                 setIsLoading(false);
                 return;
             }
 
             if (data?.link) {
+                // Store pending data for post-payment processing
                 sessionStorage.setItem('is_initiating_payment', 'true');
                 sessionStorage.setItem('pending_registration_data', JSON.stringify({
                     email: formData.email,
                     name: formData.fullName,
                     whatsapp: formData.whatsapp,
-                    domicile: formData.domicile,
-                    eventId: eventId,
-                    eventName: eventName || "Acara",
-                    ticketId: `TKT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`,
+                    instansi: formData.instansi,
+                    kategori: formData.kategori,
+                    session: selectedSession,
+                    sessionLabel: SESSION_LABELS[selectedSession],
+                    eventId,
+                    eventName: eventName || 'Acara',
+                    ticketId: data.registrationId || `REG-${Date.now()}`,
                     date_time: event?.date_time,
                     location: event?.location,
                     location_detail: event?.location_detail,
                     location_link: event?.location_link,
-                    university: formData.status === 'student' ? formData.university : null,
-                    major: formData.status === 'student' ? formData.major : null,
-                    institution: formData.status === 'professional' ? formData.institution : null,
-                    role: formData.status === 'professional' ? formData.role : null,
-                    info_source: formData.info_source,
-                    info_source_others: formData.info_source_others
+                    amount: ticketPrice,
                 }));
 
                 if (window.loadJokulCheckout) {
                     window.loadJokulCheckout(data.link);
 
-                    // Watch for the Doku popup's "current-time" ping — this fires
-                    // exactly when the checkout popup has fully loaded. We use it
-                    // as the signal to hide our loading overlay.
-                    let perfObserver: PerformanceObserver | null = null;
-                    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+                    // Detect DOKU popup load via PerformanceObserver
+                    let observer: PerformanceObserver | null = null;
+                    let fallback: ReturnType<typeof setTimeout> | null = null;
 
                     const stopLoading = () => {
                         setIsLoading(false);
-                        perfObserver?.disconnect();
-                        if (fallbackTimer) clearTimeout(fallbackTimer);
+                        observer?.disconnect();
+                        if (fallback) clearTimeout(fallback);
                     };
 
                     try {
-                        perfObserver = new PerformanceObserver((list) => {
+                        observer = new PerformanceObserver((list) => {
                             for (const entry of list.getEntries()) {
-                                if (entry.name.includes('checkout.doku.com/checkout/v2/payment/current-time')) {
+                                if (entry.name.includes('checkout.doku.com')) {
                                     stopLoading();
                                     return;
                                 }
                             }
                         });
-                        perfObserver.observe({ entryTypes: ['resource'] });
+                        observer.observe({ entryTypes: ['resource'] });
                     } catch {
-                        // PerformanceObserver not supported — fall back to timeout
+                        // PerformanceObserver not supported
                     }
-
-                    // Safety fallback: stop loading after 15s regardless
-                    fallbackTimer = setTimeout(stopLoading, 15000);
-
+                    fallback = setTimeout(stopLoading, 15_000);
                 } else {
                     window.location.href = data.link;
                 }
             } else {
-                alert("Gagal mendapatkan link pembayaran.");
+                setQuotaError('Gagal mendapatkan link pembayaran. Coba lagi.');
                 setIsLoading(false);
             }
-
-        } catch (err) {
-            console.error("Unexpected Error:", err);
-            alert("Terjadi kesalahan sistem.");
+        } catch (err: any) {
+            console.error('Unexpected error:', err);
+            setQuotaError('Terjadi kesalahan sistem. Silakan coba lagi.');
             setIsLoading(false);
         }
     };
 
-    const handleRegisterOther = () => {
-        setCurrentStep(1);
-        setPaymentStatus('idle');
-        setValue('amount', '');
-        setValue('prayer', '');
-    };
-
-    // Check URL params for payment success/failure on mount
+    // ── URL param detection (post-payment redirect) ─────────────────────────
     React.useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const paymentParam = params.get('payment');
-        const isInitiatingPayment = sessionStorage.getItem('is_initiating_payment');
+        const isInitiating = sessionStorage.getItem('is_initiating_payment');
 
         if (!paymentParam) return;
-
-        // Prevent direct access to success/cancel pages without actual payment flow
-        if (!isInitiatingPayment) {
+        if (!isInitiating) {
             window.history.replaceState({}, '', window.location.pathname);
             return;
         }
@@ -274,34 +219,28 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
-            // Trigger email sending
-            const pendingDataString = sessionStorage.getItem('pending_registration_data');
-            if (pendingDataString) {
+
+            // Trigger email / QR Code sending
+            const pendingStr = sessionStorage.getItem('pending_registration_data');
+            if (pendingStr) {
                 try {
-                    const parsedData = JSON.parse(pendingDataString);
+                    const parsed = JSON.parse(pendingStr);
                     fetch('/api/send-email', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(parsedData)
-                    }).then(async (res) => {
-                        const raw = await res.text();
-                        let data: any = {};
-                        try {
-                            data = raw ? JSON.parse(raw) : {};
-                        } catch {
-                            data = {};
-                        }
-
-                        if (!res.ok || data?.success === false) {
-                            console.error('Email API failed:', data?.message || raw || `HTTP ${res.status}`);
-                            return;
-                        }
-
-                        console.log('Email API response:', data);
+                        body: JSON.stringify(parsed),
                     })
-                        .catch(err => console.error('Failed to trigger email:', err));
+                        .then(async (res) => {
+                            const raw = await res.text();
+                            let json: any = {};
+                            try { json = raw ? JSON.parse(raw) : {}; } catch { json = {}; }
+                            if (!res.ok || json?.success === false) {
+                                console.error('Email API failed:', json?.message || raw);
+                            }
+                        })
+                        .catch((e) => console.error('Email trigger failed:', e));
                 } catch (e) {
-                    console.error('Error parsing pending registration data:', e);
+                    console.error('Parse error:', e);
                 }
                 sessionStorage.removeItem('pending_registration_data');
             }
@@ -315,511 +254,283 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ eventId, eve
         }
     }, []);
 
+    // ── Handlers for success/cancel views ──────────────────────────────────
+    const handleRegisterOther = () => {
+        setCurrentStep(1);
+        setPaymentStatus('idle');
+        setQuotaError(null);
+    };
+
     const handleRetryPayment = () => {
         setPaymentStatus('idle');
         setCurrentStep(2);
     };
 
-    // If payment is successful, show the success view covering the form
-    if (paymentStatus === 'success') {
-        return <SuccessView onRegisterOther={handleRegisterOther} />;
-    }
+    // ── Render: post-payment states ─────────────────────────────────────────
+    if (paymentStatus === 'success') return <SuccessView onRegisterOther={handleRegisterOther} />;
+    if (paymentStatus === 'cancel') return <CancelView onRetry={handleRetryPayment} />;
 
-    if (paymentStatus === 'cancel') {
-        return <CancelView onRetry={handleRetryPayment} />;
-    }
+    // ── Render: no session selected yet ────────────────────────────────────
+    const sessionSelected = Boolean(selectedSession);
 
     return (
         <div className="w-full">
-            <Stepper currentStep={currentStep} steps={steps} />
+            <Stepper currentStep={currentStep} steps={STEPS} />
 
-            <form className="flex flex-col gap-8 mt-8" onSubmit={(e) => e.preventDefault()}>
+            <form className="flex flex-col gap-6 mt-8" onSubmit={(e) => e.preventDefault()}>
 
+                {/* ── Step 1: Data Diri ─────────────────────────────────── */}
                 {currentStep === 1 && (
                     <section className="bg-white p-6 md:p-8 rounded-xl border border-[#e5e7eb] shadow-sm animate-[fadeIn_0.3s_ease-in-out]">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="flex items-center justify-center size-8 rounded-full bg-primary text-[#111814] font-bold text-sm">1</div>
-                            <h3 className="text-xl font-bold text-[#111814]">Informasi Pribadi</h3>
+                            <div className="flex items-center justify-center size-8 rounded-full bg-primary text-[#111814] font-bold text-sm shrink-0">1</div>
+                            <h3 className="text-xl font-bold text-[#111814]">Data Peserta</h3>
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-semibold text-[#111814]" htmlFor="fullName">Nama Lengkap</label>
+                            {/* Nama Lengkap */}
+                            <InputField id="fullName" label="Nama Lengkap" required error={errors.fullName?.message}>
                                 <input
                                     {...register('fullName')}
-                                    className={clsx(
-                                        "w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none",
-                                        errors.fullName ? "border-red-500" : "border-gray-300"
-                                    )}
                                     id="fullName"
-                                    placeholder="cth. Budi Santoso"
                                     type="text"
+                                    placeholder="cth. Budi Santoso"
+                                    className={clsx(
+                                        'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                        errors.fullName ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                    )}
                                 />
-                                {errors.fullName && <span className="text-xs text-red-500">{errors.fullName.message}</span>}
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-semibold text-[#111814]" htmlFor="email">Alamat Email</label>
+                            </InputField>
+
+                            {/* Email */}
+                            <InputField id="email" label="Alamat Email" required error={errors.email?.message}>
                                 <input
                                     {...register('email')}
-                                    className={clsx(
-                                        "w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none",
-                                        errors.email ? "border-red-500" : "border-gray-300"
-                                    )}
                                     id="email"
-                                    placeholder="nama@email.com"
                                     type="email"
+                                    placeholder="nama@email.com"
+                                    className={clsx(
+                                        'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                        errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                    )}
                                 />
-                                {errors.email && <span className="text-xs text-red-500">{errors.email.message}</span>}
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-semibold text-[#111814]" htmlFor="whatsapp">Nomor WhatsApp</label>
+                            </InputField>
+
+                            {/* WhatsApp */}
+                            <InputField id="whatsapp" label="Nomor WhatsApp" required error={errors.whatsapp?.message}>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">+62</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium pointer-events-none">+62</span>
                                     <input
                                         {...register('whatsapp')}
-                                        className={clsx(
-                                            "w-full h-12 pl-12 pr-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none",
-                                            errors.whatsapp ? "border-red-500" : "border-gray-300"
-                                        )}
                                         id="whatsapp"
-                                        placeholder="812-3456-7890"
                                         type="tel"
+                                        inputMode="numeric"
+                                        placeholder="812-3456-7890"
+                                        className={clsx(
+                                            'w-full h-12 pl-12 pr-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                            errors.whatsapp ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                        )}
                                     />
                                 </div>
-                                {errors.whatsapp && <span className="text-xs text-red-500">{errors.whatsapp.message}</span>}
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-semibold text-[#111814]" htmlFor="domicile">Domisili</label>
+                            </InputField>
+
+                            {/* Instansi */}
+                            <InputField id="instansi" label="Instansi / Universitas" required error={errors.instansi?.message}>
                                 <input
-                                    {...register('domicile')}
-                                    className={clsx(
-                                        "w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none",
-                                        errors.domicile ? "border-red-500" : "border-gray-300"
-                                    )}
-                                    id="domicile"
-                                    placeholder="cth. Jakarta Selatan"
+                                    {...register('instansi')}
+                                    id="instansi"
                                     type="text"
+                                    placeholder="cth. Universitas Indonesia"
+                                    className={clsx(
+                                        'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                        errors.instansi ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                    )}
                                 />
-                                {errors.domicile && <span className="text-xs text-red-500">{errors.domicile.message}</span>}
-                            </div>
+                            </InputField>
 
-                            <div className="flex flex-col gap-2 md:col-span-2 pt-2">
-                                <label className="text-sm font-semibold text-[#111814]">Jenis Kelamin</label>
-                                <div className="flex gap-6 mt-1">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            value="Laki-laki"
-                                            {...register('gender')}
-                                            className="size-4 accent-primary"
-                                        />
-                                        <span className="text-sm text-gray-700">Laki-laki</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            value="Perempuan"
-                                            {...register('gender')}
-                                            className="size-4 accent-primary"
-                                        />
-                                        <span className="text-sm text-gray-700">Perempuan</span>
-                                    </label>
-                                </div>
-                                {errors.gender && <span className="text-xs text-red-500">{errors.gender.message}</span>}
-                            </div>
-
-                            <div className="flex flex-col gap-2 md:col-span-2">
-                                <label className="text-sm font-semibold text-[#111814]" htmlFor="status">Status Saat Ini</label>
+                            {/* Kategori */}
+                            <div className="flex flex-col gap-1.5 md:col-span-2">
+                                <label htmlFor="kategori" className="text-sm font-semibold text-[#111814]">
+                                    Kategori <span className="text-red-500">*</span>
+                                </label>
                                 <div className="relative">
                                     <select
-                                        {...register('status')}
-                                        className={clsx(
-                                            "w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none appearance-none cursor-pointer",
-                                            errors.status ? "border-red-500" : "border-gray-300"
-                                        )}
-                                        id="status"
+                                        {...register('kategori')}
+                                        id="kategori"
                                         defaultValue=""
-                                    >
-                                        <option disabled value="">Pilih status Anda</option>
-                                        <option value="student">Pelajar / Mahasiswa</option>
-                                        <option value="professional">Profesional / Umum</option>
-                                    </select>
-                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
-                                </div>
-                                {errors.status && <span className="text-xs text-red-500">{errors.status.message}</span>}
-                            </div>
-
-                            {/* Conditional Fields */}
-                            {(status === 'student' || status === 'professional') && (
-                                <div className="flex flex-col gap-2 md:col-span-2 p-4 bg-blue-50/50 rounded-lg border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
-                                    <div className="flex gap-2 text-xs text-blue-600 mb-2">
-                                        <span className="material-symbols-outlined text-sm">info</span>
-                                        <span>
-                                            {status === 'student'
-                                                ? 'Silakan isi Universitas dan Jurusan Anda.'
-                                                : 'Silakan isi Instansi/Perusahaan dan Jabatan Anda.'}
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        {status === 'student' && (
-                                            <>
-                                                <div className="flex flex-col gap-1 w-full">
-                                                    <input
-                                                        {...register('university')}
-                                                        className={clsx(
-                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
-                                                            errors.university ? "border-red-500" : "border-gray-300"
-                                                        )}
-                                                        placeholder="Universitas / Perguruan Tinggi"
-                                                        type="text"
-                                                    />
-                                                    {errors.university && <span className="text-xs text-red-500">{errors.university.message}</span>}
-                                                </div>
-                                                <div className="flex flex-col gap-1 w-full">
-                                                    <input
-                                                        {...register('major')}
-                                                        className={clsx(
-                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
-                                                            errors.major ? "border-red-500" : "border-gray-300"
-                                                        )}
-                                                        placeholder="Jurusan"
-                                                        type="text"
-                                                    />
-                                                    {errors.major && <span className="text-xs text-red-500">{errors.major.message}</span>}
-                                                </div>
-                                            </>
-                                        )}
-                                        {status === 'professional' && (
-                                            <>
-                                                <div className="flex flex-col gap-1 w-full">
-                                                    <input
-                                                        {...register('institution')}
-                                                        className={clsx(
-                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
-                                                            errors.institution ? "border-red-500" : "border-gray-300"
-                                                        )}
-                                                        placeholder="Instansi / Perusahaan"
-                                                        type="text"
-                                                    />
-                                                    {errors.institution && <span className="text-xs text-red-500">{errors.institution.message}</span>}
-                                                </div>
-                                                <div className="flex flex-col gap-1 w-full">
-                                                    <input
-                                                        {...register('role')}
-                                                        className={clsx(
-                                                            "w-full h-10 px-3 rounded border text-sm focus:border-primary focus:ring-primary/20 transition-all",
-                                                            errors.role ? "border-red-500" : "border-gray-300"
-                                                        )}
-                                                        placeholder="Jabatan / Role"
-                                                        type="text"
-                                                    />
-                                                    {errors.role && <span className="text-xs text-red-500">{errors.role.message}</span>}
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="flex flex-col gap-2 md:col-span-2 pt-4 border-t border-gray-100">
-                                <label className="text-sm font-semibold text-[#111814]">Apakah Anda menggunakan mouse/keyboard eksternal?</label>
-                                <div className="flex gap-4 mt-1">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            checked={usesExternal === true}
-                                            onChange={() => setValue('uses_external_peripherals', true, { shouldValidate: true })}
-                                            className="size-4 accent-primary"
-                                        />
-                                        <span className="text-sm">YA</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            checked={usesExternal === false}
-                                            onChange={() => setValue('uses_external_peripherals', false, { shouldValidate: true })}
-                                            className="size-4 accent-primary"
-                                        />
-                                        <span className="text-sm">TIDAK</span>
-                                    </label>
-                                </div>
-                                {errors.uses_external_peripherals && <span className="text-xs text-red-500">{errors.uses_external_peripherals.message}</span>}
-                            </div>
-
-                            {usesExternal === true && (
-                                <div className="flex flex-col gap-2 md:col-span-2 animate-[fadeIn_0.3s_ease-out]">
-                                    <label className="text-sm font-semibold text-[#111814]" htmlFor="mouse_brand">Apa merek mouse yang Anda gunakan saat ini?</label>
-                                    <input
-                                        {...register('mouse_brand')}
                                         className={clsx(
-                                            "w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none",
-                                            errors.mouse_brand ? "border-red-500" : "border-gray-300"
+                                            'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none appearance-none cursor-pointer text-sm',
+                                            errors.kategori ? 'border-red-400 bg-red-50' : 'border-gray-300'
                                         )}
-                                        id="mouse_brand"
-                                        placeholder="cth. Logitech, Razer, dll."
-                                        type="text"
-                                    />
-                                    {errors.mouse_brand && <span className="text-xs text-red-500">{errors.mouse_brand.message}</span>}
+                                    >
+                                        <option disabled value="">Pilih kategori Anda</option>
+                                        <option value="mahasiswa">Mahasiswa</option>
+                                        <option value="umum">Umum</option>
+                                        <option value="profesional">Profesional</option>
+                                    </select>
+                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-lg">expand_more</span>
                                 </div>
-                            )}
-
-                            <div className="flex flex-col gap-3 md:col-span-2 pt-4">
-                                <label className="text-sm font-semibold text-[#111814]">
-                                    Menurut Anda, apa faktor terpenting dalam memilih perangkat kerja (mouse/keyboard) sebagai perangkat harian Anda?
-                                </label>
-                                <p className="text-xs text-gray-500 italic">Anda dapat memilih lebih dari 1 poin</p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-                                    {[
-                                        { value: 'Quality', label: 'Quality - dapat digunakan dalam jangka waktu lama' },
-                                        { value: 'Feature', label: 'Feature - mempermudah dan mempercepat alur kerja' },
-                                        { value: 'Ergonomic', label: 'Ergonomic Design - Nyaman digenggam/digunakan berjam-jam' },
-                                        { value: 'Price', label: 'Price - sebanding dengan fitur yang didapat' },
-                                        { value: 'Brand', label: 'Brand - memiliki reputasi brand yang baik' },
-                                        { value: 'Warranty', label: 'Official Warranty - memiliki layanan purna jual yang baik' },
-                                        { value: 'ECO', label: 'ECO Friendly - Terbuat dari bahan ramah lingkungan dan nol karbon' },
-                                        { value: 'Portable', label: 'Easy to go - mudah dibawa kemana-mana' },
-                                        { value: 'Others', label: 'Lainnya' },
-                                    ].map((factor) => (
-                                        <label key={factor.value} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all">
-                                            <input
-                                                type="checkbox"
-                                                value={factor.value}
-                                                {...register('work_device_factors')}
-                                                className="mt-1 size-4 accent-primary"
-                                            />
-                                            <span className="text-sm leading-tight text-gray-700">{factor.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                                {errors.work_device_factors && <span className="text-xs text-red-500">{errors.work_device_factors.message}</span>}
-
-                                {selectedFactors.includes('Others') && (
-                                    <div className="mt-2 animate-[fadeIn_0.3s_ease-out]">
-                                        <input
-                                            {...register('work_device_factors_others')}
-                                            className={clsx(
-                                                "w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none",
-                                                errors.work_device_factors_others ? "border-red-500" : "border-gray-300"
-                                            )}
-                                            placeholder="Sebutkan faktor lainnya..."
-                                            type="text"
-                                        />
-                                        {errors.work_device_factors_others && <span className="text-xs text-red-500">{errors.work_device_factors_others.message}</span>}
-                                    </div>
+                                {errors.kategori && (
+                                    <span className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                                        <AlertCircle size={11} />
+                                        {errors.kategori.message}
+                                    </span>
                                 )}
                             </div>
-
-                            <div className="flex flex-col gap-3 md:col-span-2 pt-4">
-                                <label className="text-sm font-semibold text-[#111814]">
-                                    Darimana anda mengetahui event ini? <span className="text-red-500">*</span>
-                                </label>
-                                <div className="flex flex-col gap-3 mt-1">
-                                    {[
-                                        'Social Media - Binary Nusantara',
-                                        'Sosial Media - GDG Bandung',
-                                        'Social Media - MXperience',
-                                        'Whatsapp Group',
-                                        'Teman',
-                                        'Telegram',
-                                        'Facebook',
-                                        'X',
-                                        'Email',
-                                        'Others'
-                                    ].map((source) => (
-                                        <label key={source} className="flex items-center gap-3 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                value={source}
-                                                {...register('info_source')}
-                                                className="size-4 accent-primary"
-                                            />
-                                            {source === 'Others' ? (
-                                                <div className="flex items-center gap-2 flex-1">
-                                                    <span className="text-sm text-gray-700 whitespace-nowrap">Yang lain:</span>
-                                                    <input
-                                                        type="text"
-                                                        {...register('info_source_others')}
-                                                        disabled={infoSource !== 'Others'}
-                                                        className={clsx(
-                                                            "flex-1 h-8 border-b transition-all focus:outline-none focus:border-primary disabled:bg-transparent disabled:opacity-50",
-                                                            errors.info_source_others ? "border-red-500" : "border-gray-300"
-                                                        )}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm text-gray-700">{source}</span>
-                                            )}
-                                        </label>
-                                    ))}
-                                </div>
-                                {errors.info_source && <span className="text-xs text-red-500">{errors.info_source.message}</span>}
-                                {errors.info_source_others && infoSource === 'Others' && <span className="text-xs text-red-500">{errors.info_source_others.message}</span>}
-                            </div>
-
-                            <div className="flex flex-col gap-3 md:col-span-2 pt-4 border-t border-gray-100 mt-2">
-                                <label className="flex items-start gap-3 cursor-pointer p-4 rounded-lg border border-gray-200 hover:border-primary/50 hover:bg-primary/5 transition-all text-sm">
-                                    <input
-                                        type="checkbox"
-                                        {...register('share_data_sponsor')}
-                                        className="mt-0.5 size-4 accent-primary"
-                                    />
-                                    <span className="text-gray-700 leading-relaxed">
-                                        Saya bersedia membagikan data saya kepada sponsor untuk penawaran eksklusif dan informasi terkait acara.
-                                        <br />
-                                        <span className="text-xs text-gray-500 font-normal italic">(Opsional)</span>
-                                    </span>
-                                </label>
-                            </div>
                         </div>
+
+                        {/* Session reminder */}
+                        {!sessionSelected && (
+                            <div className="mt-5 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                                <p className="text-sm text-amber-800">
+                                    Pastikan Anda sudah memilih sesi di panel kiri sebelum melanjutkan.
+                                </p>
+                            </div>
+                        )}
+
+                        {quotaError && (
+                            <div className="mt-4 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl animate-[fadeIn_0.3s_ease-out]">
+                                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-sm text-red-700">{quotaError}</p>
+                            </div>
+                        )}
                     </section>
                 )}
 
-
+                {/* ── Step 2: Konfirmasi ────────────────────────────────── */}
                 {currentStep === 2 && (
-                    <section className="bg-white p-6 md:p-8 rounded-xl border border-[#e5e7eb] shadow-sm relative overflow-hidden animate-[fadeIn_0.3s_ease-in-out]">
-                        <div className="absolute top-0 right-0 p-3 bg-yellow-100 rounded-bl-xl border-l border-b border-yellow-200">
-                            <p className="text-xs font-bold text-yellow-800 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">volunteer_activism</span>
-                                #BelajarSambilBeramal
-                            </p>
-                        </div>
+                    <section className="bg-white p-6 md:p-8 rounded-xl border border-[#e5e7eb] shadow-sm animate-[fadeIn_0.3s_ease-in-out]">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="flex items-center justify-center size-8 rounded-full bg-primary text-[#111814] font-bold text-sm">2</div>
-                            <h3 className="text-xl font-bold text-[#111814]">Donasi</h3>
+                            <div className="flex items-center justify-center size-8 rounded-full bg-primary text-[#111814] font-bold text-sm shrink-0">2</div>
+                            <h3 className="text-xl font-bold text-[#111814]">Konfirmasi & Pembayaran</h3>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-6">
-                            <div className="flex flex-col gap-6">
+                        {/* Order detail card */}
+                        <div className="rounded-xl border border-gray-100 overflow-hidden mb-6">
+                            {/* Header */}
+                            <div className="bg-primary/10 border-b border-primary/20 px-5 py-3 flex items-center gap-2">
+                                <CheckCircle2 size={16} className="text-primary-dark" />
+                                <p className="text-sm font-bold text-primary-dark">Rincian Pesanan</p>
+                            </div>
 
-                                <div className="bg-emerald-50/80 border border-emerald-100 rounded-xl p-6 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 opacity-10 pointer-events-none">
-                                        <span className="material-symbols-outlined text-[120px] text-emerald-800 -mr-8 -mt-8">mosque</span>
+                            {/* Registrant data */}
+                            <div className="px-5 py-4 flex flex-col gap-3">
+                                {[
+                                    { label: 'Nama', value: getValues('fullName') || '—' },
+                                    { label: 'Email', value: getValues('email') || '—' },
+                                    { label: 'WhatsApp', value: `+62 ${getValues('whatsapp') || '—'}` },
+                                    { label: 'Instansi', value: getValues('instansi') || '—' },
+                                    {
+                                        label: 'Kategori', value: (() => {
+                                            const k = getValues('kategori');
+                                            return k ? k.charAt(0).toUpperCase() + k.slice(1) : '—';
+                                        })()
+                                    },
+                                ].map(({ label, value }) => (
+                                    <div key={label} className="flex justify-between text-sm">
+                                        <span className="text-gray-500">{label}</span>
+                                        <span className="font-semibold text-gray-800 text-right max-w-[60%] truncate">{value}</span>
                                     </div>
-                                    <h4 className="font-bold text-emerald-900 text-lg mb-2 flex items-center gap-2">
-                                        <span className="material-symbols-outlined">volunteer_activism</span>
-                                        Sedekah di Bulan Suci
-                                    </h4>
-                                    <p className="text-emerald-800 text-sm leading-relaxed mb-4">
-                                        <em>
-                                            “Jika kamu menampakkan sedekah (mu), maka itu adalah baik sekali. Dan jika kamu menyembunyikannya dan kamu berikan kepada orang-orang fakir, maka menyembunyikan itu lebih baik bagimu. Dan Allah akan menghapuskan dari kamu sebagian kesalahan-kesalahanmu, dan Allah mengetahui apa yang kamu kerjakan”
-                                        </em>
-                                        <span className="block mt-1 font-semibold text-xs">(QS. Al-Baqarah: 271)</span>
-                                    </p>
+                                ))}
+                            </div>
+
+                            {/* Session + price divider */}
+                            <div className="border-t border-dashed border-gray-200 px-5 py-4 bg-gray-50">
+                                <div className="flex justify-between items-center text-sm mb-2">
+                                    <span className="text-gray-600 font-medium">
+                                        Tiket — {selectedSession ? SESSION_LABELS[selectedSession] : '—'}
+                                    </span>
+                                    <span className="font-semibold text-gray-800">{formatIDR(ticketPrice)}</span>
                                 </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-semibold text-[#111814]" htmlFor="amount">
-                                        Nominal Donasi (IDR)
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Rp</span>
-                                        <input
-                                            {...register('amount')}
-                                            onChange={(e) => {
-                                                const formatted = formatCurrency(e.target.value);
-                                                setValue('amount', formatted, { shouldValidate: true });
-                                            }}
-                                            className={clsx(
-                                                "w-full h-12 pl-10 pr-4 rounded-lg border bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none font-medium",
-                                                errors.amount ? "border-red-500" : "border-gray-300"
-                                            )}
-                                            id="amount"
-                                            placeholder="Masukkan nominal donasi..."
-                                            type="text"
-                                            inputMode="numeric"
-                                            disabled={isLoading}
-                                        />
-                                    </div>
-                                    {errors.amount && (
-                                        <span className="text-xs text-red-500 font-medium">
-                                            {errors.amount.message}
-                                        </span>
-                                    )}
-
-                                    <p className="text-xs text-slate-500">
-                                        Minimal donasi <span className="font-semibold text-slate-700">Rp {minimumDonation.toLocaleString('id-ID')}</span>. Kontribusi Anda sangat berarti bagi mereka.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-semibold text-[#111814]" htmlFor="prayer">Doa / Harapan Terbaik</label>
-                                    <p className="text-xs text-slate-500 mb-1">Tuliskan doa/harapan terbaikmu untuk acara ini (Akan ditampilkan di layar)</p>
-                                    <textarea
-                                        {...register('prayer')}
-                                        className="w-full p-4 rounded-lg border border-gray-300 bg-gray-50 focus:bg-white focus:border-primary focus:ring-primary/20 transition-all outline-none resize-none"
-                                        id="prayer"
-                                        placeholder="Semoga acaranya lancar dan berkah..."
-                                        rows={4}
-                                        disabled={isLoading}
-                                    ></textarea>
+                                <div className="flex justify-between items-center">
+                                    <span className="font-bold text-gray-800">Total Pembayaran</span>
+                                    <span className="font-black text-lg text-primary-dark">{formatIDR(ticketPrice)}</span>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Payment methods info */}
+                        <div className="flex flex-wrap gap-2 mb-6">
+                            {['QRIS'].map((m) => (
+                                <span key={m} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium border border-gray-200">
+                                    {m}
+                                </span>
+                            ))}
+                        </div>
+
+                        {/* Quota/error message */}
+                        {quotaError && (
+                            <div className="mb-4 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl animate-[fadeIn_0.3s_ease-out]">
+                                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-semibold text-red-700">Pembayaran Gagal</p>
+                                    <p className="text-sm text-red-600 mt-0.5">{quotaError}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                            Dengan melanjutkan pembayaran, Anda menyetujui syarat dan ketentuan acara. Tiket akan dikirimkan ke email Anda setelah pembayaran terverifikasi.
+                        </p>
                     </section>
                 )}
 
-                <div className="flex items-center justify-between gap-4 mt-4">
+                {/* ── Navigation buttons ────────────────────────────────── */}
+                <div className="flex items-center justify-between gap-4 mt-2">
+                    {/* Back */}
                     {currentStep > 1 ? (
                         <button
                             type="button"
-                            onClick={handleBack}
+                            onClick={() => { setCurrentStep(1); setQuotaError(null); }}
                             disabled={isLoading}
-                            className="px-6 h-12 rounded-lg border border-gray-300 text-slate-700 font-bold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-6 h-12 rounded-lg border border-gray-300 text-slate-700 font-bold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         >
+                            <ArrowLeft size={16} />
                             Kembali
                         </button>
                     ) : (
                         <div />
                     )}
 
-                    {currentStep < steps.length ? (
+                    {/* Next / Pay */}
+                    {currentStep < STEPS.length ? (
                         <button
                             type="button"
+                            id="btn-next-step"
                             onClick={handleNext}
-                            className="px-8 h-12 bg-primary hover:bg-primary-dark text-[#111814] font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center gap-2"
+                            className="flex items-center gap-2 px-8 h-12 bg-primary hover:bg-primary-dark text-[#111814] font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all text-sm"
                         >
                             Lanjut
-                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            <ArrowRight size={16} />
                         </button>
                     ) : (
                         <button
                             type="button"
-                            onClick={handleGeneratePayment}
-                            disabled={isLoading}
-                            className="px-8 h-12 bg-primary hover:bg-primary-dark text-[#111814] font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center gap-2"
+                            id="btn-proceed-payment"
+                            onClick={handlePay}
+                            disabled={isLoading || !selectedSession}
+                            className="flex items-center gap-2 px-8 h-12 bg-primary hover:bg-primary-dark text-[#111814] font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all disabled:opacity-60 disabled:cursor-not-allowed text-sm"
                         >
-                            {isLoading ? 'Memproses...' : (
+                            {isLoading ? (
                                 <>
-                                    Proses Donasi
-                                    <span className="material-symbols-outlined text-sm">payments</span>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    Memproses...
+                                </>
+                            ) : (
+                                <>
+                                    <CreditCard size={16} />
+                                    Bayar {formatIDR(ticketPrice)}
                                 </>
                             )}
                         </button>
                     )}
                 </div>
 
-                <footer className="text-center text-slate-400 text-sm py-4">
-                    © 2026 {eventName && `• ${eventName}`}
+                <footer className="text-center text-slate-400 text-xs py-4">
+                    Pembayaran aman diproses oleh <span className="font-semibold text-slate-500">DOKU</span>
                 </footer>
             </form>
-
-            {isLoading && (
-                <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-[fadeIn_0.3s_ease-out]">
-                    <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm text-center">
-                        <div className="relative mb-6">
-                            <div className="w-16 h-16 border-4 border-gray-100 rounded-full"></div>
-                            <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-primary text-2xl">payments</span>
-                            </div>
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Memproses Donasi</h3>
-                        <p className="text-gray-500 text-sm">
-                            Bismillah, sebentar yaa.. InsyaAllah kami siapkan halaman donasinya untukmu ✨
-                        </p>
-                    </div>
-                </div>
-            )}
         </div>
-
     );
 };

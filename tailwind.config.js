@@ -8,10 +8,10 @@ export default {
     theme: {
         extend: {
             colors: {
-                "primary": "#13ec6d",
-                "background-light": "#f6f8f7",
-                "background-dark": "#102218",
-                "primary-dark": "#0ebf57",
+                "primary": "rgb(var(--color-primary-rgb, 19 236 109) / <alpha-value>)",
+                "background-light": "var(--color-background, #f6f8f7)",
+                "background-dark": "var(--color-background-dark, #102218)",
+                "primary-dark": "rgb(var(--color-primary-dark-rgb, 14 191 87) / <alpha-value>)",
             },
             fontFamily: {
                 "sans": ["Lexend", "sans-serif"],

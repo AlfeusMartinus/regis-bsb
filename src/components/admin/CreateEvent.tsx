@@ -85,13 +85,28 @@ export const CreateEvent: React.FC = () => {
         const isPublished = publishIntentRef.current;
         setSubmitting(true);
         try {
-            // Upload Moderator Image
-            let moderatorPhotoUrl = data.moderator.photo_url;
-            if (moderatorFile) {
-                moderatorPhotoUrl = await uploadImage(moderatorFile);
+            // Check if slug already exists
+            const { data: existingEvents } = await supabase
+                .from('events')
+                .select('slug')
+                .eq('slug', data.slug)
+                .limit(1);
+
+            if (existingEvents && existingEvents.length > 0) {
+                alert('Error: Slug sudah digunakan. Silakan gunakan slug yang berbeda.');
+                setSubmitting(false);
+                return;
             }
 
-            const moderatorData = { ...data.moderator, photo_url: moderatorPhotoUrl };
+            // Handle optional moderator
+            let moderatorData = null;
+            if (data.moderator.name && data.moderator.name.trim() !== '') {
+                let moderatorPhotoUrl = data.moderator.photo_url;
+                if (moderatorFile) {
+                    moderatorPhotoUrl = await uploadImage(moderatorFile);
+                }
+                moderatorData = { ...data.moderator, photo_url: moderatorPhotoUrl };
+            }
 
             // Upload Speaker Images
             const speakersData = await Promise.all(data.speakers.map(async (speaker, index) => {
@@ -106,7 +121,7 @@ export const CreateEvent: React.FC = () => {
             const s2Quota = data.session2_quota ? Number(data.session2_quota) : 110;
             const tPrice  = data.ticket_price   ? Number(data.ticket_price.replace(/\./g, ''))   : 35000;
 
-            const { error } = await supabase.from('events').insert({
+            const eventData = {
                 title: data.title,
                 slug: data.slug,
                 category: data.category,
@@ -116,7 +131,6 @@ export const CreateEvent: React.FC = () => {
                 location_detail: data.location_detail,
                 location_link: enableMapLink ? data.location_link : '',
                 speakers: speakersData,
-                moderator: moderatorData,
                 minimum_donation: data.minimum_donation ? Number(data.minimum_donation.replace(/\./g, '')) : 1000,
                 ticket_price:       tPrice,
                 session1_quota:     s1Quota,
@@ -124,7 +138,14 @@ export const CreateEvent: React.FC = () => {
                 session1_available: s1Quota,
                 session2_available: s2Quota,
                 is_published: isPublished
-            });
+            };
+
+            // Only add moderator if provided
+            if (moderatorData) {
+                (eventData as any).moderator = moderatorData;
+            }
+
+            const { error } = await supabase.from('events').insert(eventData);
 
             if (error) throw error;
             navigate('/admin/events');
@@ -283,7 +304,7 @@ export const CreateEvent: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Moderator</label>
                     <div className="flex gap-4 items-start bg-gray-50 p-4 rounded-md">
                         <div className="flex-1 space-y-2">
-                            <input {...register('moderator.name', { required: true })} placeholder="Moderator Name" className="block w-full rounded-md border-gray-300 shadow-sm border p-2 text-sm" />
+                            <input {...register('moderator.name')} placeholder="Moderator Name (Optional)" className="block w-full rounded-md border-gray-300 shadow-sm border p-2 text-sm" />
                             <input {...register('moderator.title')} placeholder="Job Title" className="block w-full rounded-md border-gray-300 shadow-sm border p-2 text-sm" />
 
                             <div className="flex items-center gap-2">

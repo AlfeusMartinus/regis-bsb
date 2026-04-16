@@ -6,6 +6,7 @@ import { EventSidebar } from '../components/features/registration/EventSidebar';
 import { RegistrationForm } from '../components/features/registration/RegistrationForm';
 import type { SessionKey } from '../components/features/registration/SessionSelector';
 import { Loader2 } from 'lucide-react';
+import { getPublicEventTemplateBySlug } from '../templates/public-events/publicEventTemplateRegistry';
 
 export const PublicEventPage: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -50,6 +51,11 @@ export const PublicEventPage: React.FC = () => {
                 <p className="text-gray-500">The event you are looking for does not exist or has been removed.</p>
             </div>
         );
+    }
+
+    const Template = getPublicEventTemplateBySlug(event.slug);
+    if (Template) {
+        return <Template event={event} />;
     }
 
     return (

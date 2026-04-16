@@ -130,23 +130,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         </p>
                     </div>
 
-                    <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-                        <p style="margin: 0 0 8px 0; color: #065f46; font-size: 16px; font-weight: bold;">
-                            📲 Gabung Grup WhatsApp Peserta
-                        </p>
-                        <p style="margin: 0 0 14px 0; color: #065f46; font-size: 14px; line-height: 1.6;">
-                            Untuk update informasi terbaru seputar acara, silakan bergabung ke grup WhatsApp berikut:
-                        </p>
-                        <a href="${WHATSAPP_GROUP_URL}" style="display: inline-block; padding: 10px 16px; background-color: #059669; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold;">
-                            Join Grup WhatsApp
-                        </a>
-                        <p style="margin: 12px 0 0 0; color: #047857; font-size: 12px; word-break: break-all;">
-                            ${WHATSAPP_GROUP_URL}
-                        </p>
-                    </div>
 
                     <p style="color: #4b5563; line-height: 1.6; text-align: center; margin-bottom: 30px;">
-                        Dukungan Anda sangat berarti bagi kami. Sampai jumpa di lokasi acara!
+                        Sampai jumpa di lokasi acara!
                     </p>
 
                     <div style="border-top: 1px solid #eaeaea; padding-top: 20px; text-align: center;">

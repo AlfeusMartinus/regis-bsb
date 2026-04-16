@@ -11,6 +11,16 @@ import { SuccessView } from './SuccessView';
 import { CancelView } from './CancelView';
 import type { SessionKey } from './SessionSelector';
 
+const INFO_SOURCE_OPTIONS = [
+    'Instagram',
+    'Twitter / X',
+    'LinkedIn',
+    'WhatsApp Group',
+    'Teman / Kenalan',
+    'Website GDG',
+    'Lainnya',
+];
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SESSION_LABELS: Record<SessionKey, string> = {
     session1: 'Sesi 1',
@@ -78,6 +88,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         register,
         trigger,
         getValues,
+        watch,
         formState: { errors },
     } = useForm<RegistrationFormData>({
         resolver: zodResolver(registrationSchema),
@@ -85,9 +96,19 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     });
 
     // ── Step 1: Validate & advance ──────────────────────────────────────────
+    const kategoriValue = watch('kategori');
+
     const handleNext = async () => {
         setQuotaError(null);
-        const isValid = await trigger(['fullName', 'email', 'whatsapp', 'instansi', 'kategori']);
+        const baseFields: (keyof RegistrationFormData)[] = [
+            'fullName', 'email', 'whatsapp', 'gender', 'domicile',
+            'kategori', 'info_source', 'share_data_sponsor',
+        ];
+        const conditionalFields: (keyof RegistrationFormData)[] =
+            kategoriValue === 'profesional' ? ['role', 'institution'] :
+            kategoriValue === 'mahasiswa'   ? ['major', 'university'] : [];
+
+        const isValid = await trigger([...baseFields, ...conditionalFields]);
         if (!isValid) return;
 
         if (!selectedSession) {
@@ -116,8 +137,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     name: formData.fullName,
                     email: formData.email,
                     phone: formData.whatsapp,
-                    instansi: formData.instansi,
+                    gender: formData.gender,
+                    domicile: formData.domicile,
                     kategori: formData.kategori,
+                    role: formData.role,
+                    institution: formData.institution,
+                    major: formData.major,
+                    university: formData.university,
+                    info_source: formData.info_source,
+                    share_data_sponsor: formData.share_data_sponsor === 'true',
                     session: selectedSession,
                     eventId,
                     eventName,
@@ -148,8 +176,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     email: formData.email,
                     name: formData.fullName,
                     whatsapp: formData.whatsapp,
-                    instansi: formData.instansi,
+                    gender: formData.gender,
+                    domicile: formData.domicile,
                     kategori: formData.kategori,
+                    role: formData.role,
+                    institution: formData.institution,
+                    major: formData.major,
+                    university: formData.university,
+                    info_source: formData.info_source,
+                    share_data_sponsor: formData.share_data_sponsor === 'true',
                     session: selectedSession,
                     sessionLabel: SESSION_LABELS[selectedSession],
                     eventId,
@@ -334,16 +369,36 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                 </div>
                             </InputField>
 
-                            {/* Instansi */}
-                            <InputField id="instansi" label="Instansi / Universitas" required error={errors.instansi?.message}>
+                            {/* Jenis Kelamin */}
+                            <InputField id="gender" label="Jenis Kelamin" required error={errors.gender?.message}>
+                                <div className="relative">
+                                    <select
+                                        {...register('gender')}
+                                        id="gender"
+                                        defaultValue=""
+                                        className={clsx(
+                                            'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none appearance-none cursor-pointer text-sm',
+                                            errors.gender ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                        )}
+                                    >
+                                        <option disabled value="">Pilih jenis kelamin</option>
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </select>
+                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-lg">expand_more</span>
+                                </div>
+                            </InputField>
+
+                            {/* Domisili */}
+                            <InputField id="domicile" label="Domisili" required error={errors.domicile?.message}>
                                 <input
-                                    {...register('instansi')}
-                                    id="instansi"
+                                    {...register('domicile')}
+                                    id="domicile"
                                     type="text"
-                                    placeholder="cth. Universitas Indonesia"
+                                    placeholder="cth. Bandung, Jawa Barat"
                                     className={clsx(
                                         'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
-                                        errors.instansi ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                        errors.domicile ? 'border-red-400 bg-red-50' : 'border-gray-300'
                                     )}
                                 />
                             </InputField>
@@ -365,7 +420,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                     >
                                         <option disabled value="">Pilih kategori Anda</option>
                                         <option value="mahasiswa">Mahasiswa</option>
-                                        <option value="umum">Umum</option>
                                         <option value="profesional">Profesional</option>
                                     </select>
                                     <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-lg">expand_more</span>
@@ -376,6 +430,126 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                         {errors.kategori.message}
                                     </span>
                                 )}
+                            </div>
+
+                            {/* Conditional: Profesional fields */}
+                            {kategoriValue === 'profesional' && (
+                                <>
+                                    <InputField id="role" label="Jabatan / Peran" required error={errors.role?.message}>
+                                        <input
+                                            {...register('role')}
+                                            id="role"
+                                            type="text"
+                                            placeholder="cth. Software Engineer"
+                                            className={clsx(
+                                                'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                                errors.role ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                            )}
+                                        />
+                                    </InputField>
+                                    <InputField id="institution" label="Instansi" required error={errors.institution?.message}>
+                                        <input
+                                            {...register('institution')}
+                                            id="institution"
+                                            type="text"
+                                            placeholder="cth. PT. Teknologi Maju"
+                                            className={clsx(
+                                                'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                                errors.institution ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                            )}
+                                        />
+                                    </InputField>
+                                </>
+                            )}
+
+                            {/* Conditional: Mahasiswa fields */}
+                            {kategoriValue === 'mahasiswa' && (
+                                <>
+                                    <InputField id="major" label="Jurusan" required error={errors.major?.message}>
+                                        <input
+                                            {...register('major')}
+                                            id="major"
+                                            type="text"
+                                            placeholder="cth. Teknik Informatika"
+                                            className={clsx(
+                                                'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                                errors.major ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                            )}
+                                        />
+                                    </InputField>
+                                    <InputField id="university" label="Universitas" required error={errors.university?.message}>
+                                        <input
+                                            {...register('university')}
+                                            id="university"
+                                            type="text"
+                                            placeholder="cth. Universitas Indonesia"
+                                            className={clsx(
+                                                'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                                errors.university ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                            )}
+                                        />
+                                    </InputField>
+                                </>
+                            )}
+
+                            {/* Sumber Informasi */}
+                            <div className="flex flex-col gap-1.5 md:col-span-2">
+                                <label htmlFor="info_source" className="text-sm font-semibold text-[#111814]">
+                                    Dari mana kamu tahu acara ini? <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        {...register('info_source')}
+                                        id="info_source"
+                                        defaultValue=""
+                                        className={clsx(
+                                            'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none appearance-none cursor-pointer text-sm',
+                                            errors.info_source ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                        )}
+                                    >
+                                        <option disabled value="">Pilih sumber informasi</option>
+                                        {INFO_SOURCE_OPTIONS.map((src) => (
+                                            <option key={src} value={src}>{src}</option>
+                                        ))}
+                                    </select>
+                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-lg">expand_more</span>
+                                </div>
+                                {errors.info_source && (
+                                    <span className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                                        <AlertCircle size={11} />
+                                        {errors.info_source.message}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Persetujuan Data ke Sponsor */}
+                            <div className="md:col-span-2">
+                                <InputField id="share_data_sponsor" label="Persetujuan Data" required error={errors.share_data_sponsor?.message}>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="flex items-start gap-3 cursor-pointer group">
+                                            <input
+                                                type="radio"
+                                                {...register('share_data_sponsor')}
+                                                value="true"
+                                                className="mt-1 accent-primary cursor-pointer"
+                                            />
+                                            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
+                                                <span className="font-semibold">Ya</span>, saya setuju data saya dibagikan kepada sponsor acara.
+                                            </span>
+                                        </label>
+                                        <label className="flex items-start gap-3 cursor-pointer group">
+                                            <input
+                                                type="radio"
+                                                {...register('share_data_sponsor')}
+                                                value="false"
+                                                className="mt-1 accent-primary cursor-pointer"
+                                            />
+                                            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
+                                                <span className="font-semibold">Tidak</span>, saya tidak ingin data saya dibagikan kepada sponsor.
+                                            </span>
+                                        </label>
+                                    </div>
+                                </InputField>
                             </div>
                         </div>
 
@@ -416,18 +590,26 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
                             {/* Registrant data */}
                             <div className="px-5 py-4 flex flex-col gap-3">
-                                {[
-                                    { label: 'Nama', value: getValues('fullName') || '—' },
-                                    { label: 'Email', value: getValues('email') || '—' },
-                                    { label: 'WhatsApp', value: `+62 ${getValues('whatsapp') || '—'}` },
-                                    { label: 'Instansi', value: getValues('instansi') || '—' },
-                                    {
-                                        label: 'Kategori', value: (() => {
-                                            const k = getValues('kategori');
-                                            return k ? k.charAt(0).toUpperCase() + k.slice(1) : '—';
-                                        })()
-                                    },
-                                ].map(({ label, value }) => (
+                                {((): { label: string; value: string }[] => {
+                                    const k = getValues('kategori');
+                                    const rows: { label: string; value: string }[] = [
+                                        { label: 'Nama', value: getValues('fullName') || '—' },
+                                        { label: 'Email', value: getValues('email') || '—' },
+                                        { label: 'WhatsApp', value: `+62 ${getValues('whatsapp') || '—'}` },
+                                        { label: 'Jenis Kelamin', value: getValues('gender') || '—' },
+                                        { label: 'Domisili', value: getValues('domicile') || '—' },
+                                        { label: 'Kategori', value: k ? k.charAt(0).toUpperCase() + k.slice(1) : '—' },
+                                    ];
+                                    if (k === 'profesional') {
+                                        rows.push({ label: 'Jabatan', value: getValues('role') || '—' });
+                                        rows.push({ label: 'Instansi', value: getValues('institution') || '—' });
+                                    } else if (k === 'mahasiswa') {
+                                        rows.push({ label: 'Jurusan', value: getValues('major') || '—' });
+                                        rows.push({ label: 'Universitas', value: getValues('university') || '—' });
+                                    }
+                                    rows.push({ label: 'Sumber Info', value: getValues('info_source') || '—' });
+                                    return rows;
+                                })().map(({ label, value }) => (
                                     <div key={label} className="flex justify-between text-sm">
                                         <span className="text-gray-500">{label}</span>
                                         <span className="font-semibold text-gray-800 text-right max-w-[60%] truncate">{value}</span>

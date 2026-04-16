@@ -45,6 +45,16 @@ interface RegistrationFormProps {
     event?: any;
     selectedSession: SessionKey | null;
     onSessionSelect: (session: SessionKey) => void;
+    /**
+     * UI variant - dipakai oleh template event supaya layout bisa berbeda
+     * tanpa mengubah logic form/payment.
+     */
+    hideStepper?: boolean;
+    /**
+     * Tambahkan variant agar section/heading step bisa dikompakkan.
+     * Untuk `bwai`, step 1 dibuat tanpa heading “Data Peserta”.
+     */
+    uiVariant?: 'default' | 'bwai';
 }
 
 // ─── Input helper ─────────────────────────────────────────────────────────────
@@ -76,9 +86,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     eventSlug,
     ticketPrice = 35_000,
     event,
+    hideStepper = false,
+    uiVariant = 'default',
     selectedSession,
     onSessionSelect: _onSessionSelect,
 }) => {
+    const isBwai = uiVariant === 'bwai';
     const [currentStep, setCurrentStep] = useState(1);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
@@ -310,17 +323,27 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
     return (
         <div className="w-full">
-            <Stepper currentStep={currentStep} steps={STEPS} />
+            {!hideStepper && <Stepper currentStep={currentStep} steps={STEPS} />}
 
-            <form className="flex flex-col gap-6 mt-8" onSubmit={(e) => e.preventDefault()}>
+            <form
+                className={clsx('flex flex-col gap-6 mt-8', isBwai && 'mt-0')}
+                onSubmit={(e) => e.preventDefault()}
+            >
 
                 {/* ── Step 1: Data Diri ─────────────────────────────────── */}
                 {currentStep === 1 && (
-                    <section className="bg-white p-6 md:p-8 rounded-xl border border-[#e5e7eb] shadow-sm animate-[fadeIn_0.3s_ease-in-out]">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="flex items-center justify-center size-8 rounded-full bg-primary text-[#111814] font-bold text-sm shrink-0">1</div>
-                            <h3 className="text-xl font-bold text-[#111814]">Data Peserta</h3>
-                        </div>
+                    <section
+                        className={clsx(
+                            'p-6 md:p-8 rounded-xl border border-[#e5e7eb] shadow-sm animate-[fadeIn_0.3s_ease-in-out]',
+                            isBwai && 'bg-transparent p-0 rounded-none border-0 shadow-none animate-none'
+                        )}
+                    >
+                        {!isBwai && (
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="flex items-center justify-center size-8 rounded-full bg-primary text-[#111814] font-bold text-sm shrink-0">1</div>
+                                <h3 className="text-xl font-bold text-[#111814]">Data Peserta</h3>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             {/* Nama Lengkap */}

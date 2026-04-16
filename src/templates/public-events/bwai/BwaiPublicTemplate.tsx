@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { MainLayout } from '../../../components/layout/MainLayout';
-import { EventSidebar } from '../../../components/features/registration/EventSidebar';
 import { RegistrationForm } from '../../../components/features/registration/RegistrationForm';
 import { EventThemeProvider } from '../../../themes/EventThemeProvider';
 import { bwaiTheme } from '../../../themes/events/bwai/bwaiTheme';
+import { BwaiPublicLayout } from './BwaiPublicLayout';
+import { BwaiEventSidebar } from './BwaiEventSidebar';
 import type { SessionKey } from '../../../components/features/registration/SessionSelector';
 import type { PublicEventTemplateProps } from '../types';
 
@@ -19,9 +19,9 @@ export const BwaiPublicTemplate: React.FC<PublicEventTemplateProps> = ({ event }
 
     return (
         <EventThemeProvider theme={bwaiTheme}>
-            <MainLayout
+            <BwaiPublicLayout
                 sidebar={
-                    <EventSidebar
+                    <BwaiEventSidebar
                         event={event}
                         selectedSession={selectedSession}
                         onSessionSelect={setSelectedSession}
@@ -36,8 +36,10 @@ export const BwaiPublicTemplate: React.FC<PublicEventTemplateProps> = ({ event }
                     event={event}
                     selectedSession={selectedSession}
                     onSessionSelect={setSelectedSession}
+                    hideStepper
+                    uiVariant="bwai"
                 />
-            </MainLayout>
+            </BwaiPublicLayout>
         </EventThemeProvider>
     );
 };

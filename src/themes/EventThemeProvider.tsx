@@ -1,6 +1,19 @@
 import React from 'react';
 import type { EventTheme, CssVars } from './types';
 
+function hexToRgbTriplet(hex: string): string {
+    // Expected formats: '#RRGGBB' or 'RRGGBB'
+    const raw = hex.startsWith('#') ? hex.slice(1) : hex;
+    if (raw.length !== 6) return '0 0 0';
+
+    const r = parseInt(raw.slice(0, 2), 16);
+    const g = parseInt(raw.slice(2, 4), 16);
+    const b = parseInt(raw.slice(4, 6), 16);
+
+    if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return '0 0 0';
+    return `${r} ${g} ${b}`;
+}
+
 function toCssVars(theme: EventTheme): CssVars {
     const {
         palette,
@@ -21,11 +34,16 @@ function toCssVars(theme: EventTheme): CssVars {
 
         '--color-primary': palette.primary,
         '--color-primary-dark': palette.primaryDark,
+        // dipakai oleh Tailwind saat opacity modifier digunakan (mis. `bg-primary/10`)
+        '--color-primary-rgb': hexToRgbTriplet(palette.primary),
+        '--color-primary-dark-rgb': hexToRgbTriplet(palette.primaryDark),
         '--color-background': palette.background,
         '--color-surface': palette.surface,
         '--color-text': palette.text,
         '--color-muted-text': palette.mutedText,
         '--color-border': palette.border,
+        // dipakai untuk beberapa class seperti `text-background-dark`
+        '--color-background-dark': palette.text,
 
         '--color-accent': palette.accent,
         '--color-accent-2': palette.accent2,

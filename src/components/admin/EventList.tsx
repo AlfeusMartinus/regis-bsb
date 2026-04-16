@@ -101,14 +101,48 @@ export const EventList: React.FC = () => {
     };
 
     const handleDelete = async (eventId: string) => {
-        const isConfirmed = await showConfirm('Are you sure you want to delete this event?');
+        const isConfirmed = await showConfirm('Are you sure you want to delete this event? This will also delete all related registrations.');
         if (isConfirmed) {
-            const { error } = await supabase.from('events').delete().eq('id', eventId);
-            if (error) {
-                console.error("Failed to delete", error);
-                await showAlert({ message: "Failed to delete event.", severity: "error" });
-            } else {
-                fetchEvents();
+            try {
+                // First, delete all registrations for this event
+                const { error: deleteRegistrationsError } = await supabase
+                    .from('registrations')
+                    .delete()
+                    .eq('event_id', eventId);
+
+                if (deleteRegistrationsError) {
+                    console.error("Failed to delete registrations:", deleteRegistrationsError);
+                    await showAlert({ message: "Failed to delete registrations for this event.", severity: "error" });
+                    return;
+                }
+
+                // Then, delete sponsor_event relationships
+                const { error: deleteSponsorEventsError } = await supabase
+                    .from('sponsor_events')
+                    .delete()
+                    .eq('event_id', eventId);
+
+                if (deleteSponsorEventsError) {
+                    console.error("Failed to delete sponsor events:", deleteSponsorEventsError);
+                    // Continue with event deletion even if this fails
+                }
+
+                // Finally, delete the event
+                const { error: deleteEventError } = await supabase
+                    .from('events')
+                    .delete()
+                    .eq('id', eventId);
+
+                if (deleteEventError) {
+                    console.error("Failed to delete event:", deleteEventError);
+                    await showAlert({ message: "Failed to delete event.", severity: "error" });
+                } else {
+                    await showAlert({ message: "Event and related registrations deleted successfully.", severity: "success" });
+                    fetchEvents();
+                }
+            } catch (error) {
+                console.error("Unexpected error during deletion:", error);
+                await showAlert({ message: "An unexpected error occurred while deleting the event.", severity: "error" });
             }
         }
     };

@@ -1,6 +1,12 @@
 import React from 'react';
-import { CalendarDays, MapPin, Sparkles, Check } from 'lucide-react';
+import { CalendarDays, MapPin, Check } from 'lucide-react';
 import type { SessionInfo, SessionKey } from '../../../components/features/registration/SessionSelector';
+
+interface Speaker {
+    name: string;
+    title: string;
+    photo_url?: string;
+}
 
 export interface BwaiEventSidebarProps {
     event: any;
@@ -30,20 +36,20 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
         {
             key: 'session1',
             label: 'SESI 1',
-            time: displayEvent.session1_time || '',
+            time: displayEvent.session1_time || '07:30 - 12:00',
             quota: displayEvent.session1_quota ?? 110,
             available: displayEvent.session1_available ?? displayEvent.session1_quota ?? 110,
         },
         {
             key: 'session2',
             label: 'SESI 2',
-            time: displayEvent.session2_time || '',
+            time: displayEvent.session2_time || '12:30 - 16:00',
             quota: displayEvent.session2_quota ?? 110,
             available: displayEvent.session2_available ?? displayEvent.session2_quota ?? 110,
         },
     ];
 
-    const featuredSpeaker = Array.isArray(displayEvent.speakers) ? displayEvent.speakers[0] : null;
+    const speakers = Array.isArray(displayEvent.speakers) ? displayEvent.speakers : [];
 
     const titlePillText = displayEvent?.title ? displayEvent.title : 'BWA1 2026';
 
@@ -61,8 +67,8 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
             <div className="w-full mb-6">
                 <img
                     src="/assets/events/bwai/layer_1.svg"
-                    alt=""
-                    className="w-full h-[200px] sm:h-[240px] object-cover object-left-top"
+                    alt="BWA1 2026 Logo"
+                    className="w-full h-auto object-contain object-center"
                     draggable={false}
                 />
             </div>
@@ -125,7 +131,7 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                                     <div>
                                         <div className="text-sm font-bold text-[#111814]">{session.label}</div>
                                         <div className="text-xs text-gray-500 mt-1">
-                                            {session.time || 'Morning Session (08:00 - 12:00)'}
+                                            {session.time}
                                         </div>
                                     </div>
                                     {isSelected && !isFull && (
@@ -154,34 +160,32 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                 </div>
             </div>
 
-            {/* Featured speaker */}
+            {/* Speakers List */}
             <div className="mt-auto">
                 <div className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">
-                    FEATURED SPEAKER
+                    SPEAKERS
                 </div>
 
-                {featuredSpeaker ? (
-                    <div className="rounded-xl border border-gray-100 bg-white p-4">
-                        <div className="flex items-center gap-3">
-                            <img
-                                src={
-                                    featuredSpeaker.photo_url ||
-                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(featuredSpeaker.name || 'Speaker')}&background=0D8BFF&color=fff`
-                                }
-                                alt={featuredSpeaker.name}
-                                className="w-12 h-12 rounded-lg object-cover"
-                            />
-                            <div className="min-w-0">
-                                <div className="text-sm font-bold text-[#111814] truncate">{featuredSpeaker.name}</div>
-                                <div className="text-xs text-gray-500 truncate">{featuredSpeaker.title}</div>
+                {speakers.length > 0 ? (
+                    <div className="space-y-3">
+                        {speakers.map((speaker: Speaker, index: number) => (
+                            <div key={index} className="rounded-xl border border-gray-100 bg-white p-4">
+                                <div className="flex items-center gap-3">
+                                    <img
+                                        src={
+                                            speaker.photo_url ||
+                                            `https://ui-avatars.com/api/?name=${encodeURIComponent(speaker.name || 'Speaker')}&background=0D8BFF&color=fff`
+                                        }
+                                        alt={speaker.name}
+                                        className="w-12 h-12 rounded-lg object-cover"
+                                    />
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-bold text-[#111814] truncate">{speaker.name}</div>
+                                        <div className="text-xs text-gray-500 truncate">{speaker.title}</div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        {featuredSpeaker?.title && (
-                            <div className="mt-3 flex items-center gap-2 text-[11px] font-bold uppercase text-[#9CA3AF]">
-                                <Sparkles size={14} className="text-primary" />
-                                Featured
-                            </div>
-                        )}
+                        ))}
                     </div>
                 ) : (
                     <div className="rounded-xl border border-gray-100 bg-white p-4 text-sm text-gray-500">

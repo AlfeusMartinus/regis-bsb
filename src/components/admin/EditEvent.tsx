@@ -148,12 +148,29 @@ export const EditEvent: React.FC = () => {
         const publishedState = publishIntentRef.current !== null ? publishIntentRef.current : isPublished;
         publishIntentRef.current = null; // reset after consuming
         try {
-            let moderatorPhotoUrl = formData.moderator.photo_url;
-            if (moderatorFile) {
-                moderatorPhotoUrl = await uploadImage(moderatorFile);
+            // Check if slug already exists (excluding current event)
+            const { data: existingEvents } = await supabase
+                .from('events')
+                .select('slug')
+                .eq('slug', formData.slug)
+                .neq('id', id)
+                .limit(1);
+
+            if (existingEvents && existingEvents.length > 0) {
+                alert('Error: Slug sudah digunakan. Silakan gunakan slug yang berbeda.');
+                setSubmitting(false);
+                return;
             }
 
-            const moderatorData = { ...formData.moderator, photo_url: moderatorPhotoUrl };
+            // Handle optional moderator
+            let moderatorData = null;
+            if (formData.moderator.name && formData.moderator.name.trim() !== '') {
+                let moderatorPhotoUrl = formData.moderator.photo_url;
+                if (moderatorFile) {
+                    moderatorPhotoUrl = await uploadImage(moderatorFile);
+                }
+                moderatorData = { ...formData.moderator, photo_url: moderatorPhotoUrl };
+            }
 
             const speakersData = await Promise.all(formData.speakers.map(async (speaker, index) => {
                 let photoUrl = speaker.photo_url;
@@ -167,25 +184,31 @@ export const EditEvent: React.FC = () => {
             const s2Quota = formData.session2_quota ? Number(formData.session2_quota) : 110;
             const tPrice  = formData.ticket_price   ? Number(formData.ticket_price.replace(/\./g, '')) : 35000;
 
+            const updateData = {
+                title: formData.title,
+                slug: formData.slug,
+                category: formData.category,
+                description: formData.description,
+                date_time: new Date(formData.date_time).toISOString(),
+                location: formData.location,
+                location_detail: formData.location_detail,
+                location_link: enableMapLink ? formData.location_link : '',
+                speakers: speakersData,
+                minimum_donation: formData.minimum_donation ? Number(formData.minimum_donation.replace(/\./g, '')) : 1000,
+                ticket_price:   tPrice,
+                session1_quota: s1Quota,
+                session2_quota: s2Quota,
+                is_published: publishedState
+            };
+
+            // Only add moderator if provided
+            if (moderatorData) {
+                (updateData as any).moderator = moderatorData;
+            }
+
             const { error } = await supabase
                 .from('events')
-                .update({
-                    title: formData.title,
-                    slug: formData.slug,
-                    category: formData.category,
-                    description: formData.description,
-                    date_time: new Date(formData.date_time).toISOString(),
-                    location: formData.location,
-                    location_detail: formData.location_detail,
-                    location_link: enableMapLink ? formData.location_link : '',
-                    speakers: speakersData,
-                    moderator: moderatorData,
-                    minimum_donation: formData.minimum_donation ? Number(formData.minimum_donation.replace(/\./g, '')) : 1000,
-                    ticket_price:   tPrice,
-                    session1_quota: s1Quota,
-                    session2_quota: s2Quota,
-                    is_published: publishedState
-                })
+                .update(updateData)
                 .eq('id', id);
 
             if (error) throw error;
@@ -354,7 +377,7 @@ export const EditEvent: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Moderator</label>
                     <div className="flex gap-4 items-start bg-gray-50 p-4 rounded-md">
                         <div className="flex-1 space-y-2">
-                            <input {...register('moderator.name', { required: true })} placeholder="Moderator Name" className="block w-full rounded-md border-gray-300 shadow-sm border p-2 text-sm" />
+                            <input {...register('moderator.name')} placeholder="Moderator Name (Optional)" className="block w-full rounded-md border-gray-300 shadow-sm border p-2 text-sm" />
                             <input {...register('moderator.title')} placeholder="Job Title" className="block w-full rounded-md border-gray-300 shadow-sm border p-2 text-sm" />
 
                             <div className="flex items-center gap-2">

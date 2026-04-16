@@ -87,12 +87,12 @@ serve(async (req: Request) => {
         } = body;
 
         // ── Env vars ────────────────────────────────────────────────────────
-        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-        const dokuClientId = Deno.env.get('DOKU_CLIENT_ID') ?? '';
-        const dokuSecretKey = Deno.env.get('DOKU_SECRET_KEY') ?? '';
-        const dokuApiUrl = Deno.env.get('DOKU_API_URL') || 'https://api-sandbox.doku.com';
-        const frontendUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:5173';
+        const supabaseUrl    = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseKey    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const dokuClientId   = Deno.env.get('DOKU_CLIENT_ID') ?? '';
+        const dokuSecretKey  = Deno.env.get('DOKU_SECRET_KEY') ?? '';
+        const dokuApiUrl     = Deno.env.get('DOKU_API_URL') || 'https://api-sandbox.doku.com';
+        const frontendUrl    = Deno.env.get('FRONTEND_URL') || 'http://localhost:5173';
 
         if (!dokuClientId || !dokuSecretKey) {
             throw new Error('DOKU configuration missing (DOKU_CLIENT_ID or DOKU_SECRET_KEY)');
@@ -155,10 +155,10 @@ serve(async (req: Request) => {
         }
 
         // ── Generate IDs & expiry ────────────────────────────────────────────
-        const invoiceNumber = `INV-${Date.now()}`;
+        const invoiceNumber  = `INV-${Date.now()}`;
         const registrationId = invoiceNumber;
-        const expiredAt = new Date(Date.now() + PAYMENT_TIMEOUT * 60 * 1000).toISOString();
-        const sessionLabel = session === 'session1' ? 'Sesi 1' : 'Sesi 2';
+        const expiredAt       = new Date(Date.now() + PAYMENT_TIMEOUT * 60 * 1000).toISOString();
+        const sessionLabel    = session === 'session1' ? 'Sesi 1' : 'Sesi 2';
         const redirectBaseUrl = eventSlug ? `${frontendUrl}/e/${eventSlug}` : frontendUrl;
 
         // ── Insert registration with PENDING status ──────────────────────────
@@ -166,17 +166,17 @@ serve(async (req: Request) => {
         const { data: regData, error: regError } = await admin
             .from('registrations')
             .insert({
-                event_id: eventId,
+                event_id:        eventId,
                 name,
                 email,
-                phone: phone || null,
-                institution: instansi || null,
-                kategori: kategori || null,
+                phone:           phone || null,
+                institution:     instansi || null,
+                kategori:        kategori || null,
                 session,
                 registration_id: registrationId,
-                amount: ticketPrice,
-                status: 'pending',
-                expired_at: expiredAt,
+                amount:          ticketPrice,
+                status:          'pending',
+                expired_at:      expiredAt,
             })
             .select('id')
             .single();
@@ -193,47 +193,47 @@ serve(async (req: Request) => {
         }
 
         // ── Build DOKU payload ───────────────────────────────────────────────
-        const description = sanitizeString(`Tiket ${sessionLabel} — ${eventName || 'Event'}`).substring(0, 50);
-        const sanitizedName = sanitizeString(name).substring(0, 50);
-        const timestamp = new Date().toISOString().split('.')[0] + 'Z';
-        const requestId = crypto.randomUUID();
-        const requestTarget = '/checkout/v1/payment';
+        const description       = sanitizeString(`Tiket ${sessionLabel} — ${eventName || 'Event'}`).substring(0, 50);
+        const sanitizedName     = sanitizeString(name).substring(0, 50);
+        const timestamp         = new Date().toISOString().split('.')[0] + 'Z';
+        const requestId         = crypto.randomUUID();
+        const requestTarget     = '/checkout/v1/payment';
 
         const dokuBody = {
             order: {
-                amount: ticketPrice,
-                invoice_number: invoiceNumber,
-                currency: 'IDR',
-                callback_url: `${redirectBaseUrl}?payment=success`,
-                callback_url_cancel: `${redirectBaseUrl}?payment=cancel`,
-                callback_url_result: `${redirectBaseUrl}?payment=success`,
-                language: 'ID',
-                auto_redirect: true,
+                amount:               ticketPrice,
+                invoice_number:       invoiceNumber,
+                currency:             'IDR',
+                callback_url:         `${redirectBaseUrl}?payment=success`,
+                callback_url_cancel:  `${redirectBaseUrl}?payment=cancel`,
+                callback_url_result:  `${redirectBaseUrl}?payment=success`,
+                language:             'ID',
+                auto_redirect:        true,
                 disable_retry_payment: true,
                 line_items: [{
-                    id: invoiceNumber,
-                    name: description,
+                    id:       invoiceNumber,
+                    name:     description,
                     quantity: 1,
-                    price: ticketPrice,
+                    price:    ticketPrice,
                     category: 'Event Ticket',
                 }],
             },
             payment: {
                 payment_due_date: PAYMENT_TIMEOUT,
-                type: 'SALE',
+                type:             'SALE',
                 payment_method_types: ['QRIS', 'VIRTUAL_ACCOUNT_BCA', 'VIRTUAL_ACCOUNT_BANK_MANDIRI', 'VIRTUAL_ACCOUNT_BNI', 'EMONEY_SHOPEEPAY', 'EMONEY_OVO', 'EMONEY_DANA'],
             },
             customer: {
-                id: email,
-                name: sanitizedName,
+                id:    email,
+                name:  sanitizedName,
                 email: email,
                 phone: phone || '6281234567890',
             },
         };
 
         const bodyString = JSON.stringify(dokuBody);
-        const digest = await generateDigest(bodyString);
-        const signature = await generateSignature(
+        const digest     = await generateDigest(bodyString);
+        const signature  = await generateSignature(
             dokuClientId,
             requestId,
             timestamp,
@@ -245,14 +245,14 @@ serve(async (req: Request) => {
         console.log('[create-payment] Step 3: calling DOKU', { invoiceNumber, requestId });
 
         // ── Call DOKU API ────────────────────────────────────────────────────
-        const dokuRes = await fetch(`${dokuApiUrl}${requestTarget}`, {
-            method: 'POST',
+        const dokuRes  = await fetch(`${dokuApiUrl}${requestTarget}`, {
+            method:  'POST',
             headers: {
-                'Client-Id': dokuClientId,
-                'Request-Id': requestId,
+                'Client-Id':         dokuClientId,
+                'Request-Id':        requestId,
                 'Request-Timestamp': timestamp,
-                'Signature': `HMACSHA256=${signature}`,
-                'Content-Type': 'application/json',
+                'Signature':         `HMACSHA256=${signature}`,
+                'Content-Type':      'application/json',
             },
             body: bodyString,
         });
@@ -268,7 +268,7 @@ serve(async (req: Request) => {
         }
 
         const actualResponse = dokuData.response || dokuData;
-        const paymentUrl = actualResponse.payment?.url;
+        const paymentUrl     = actualResponse.payment?.url;
 
         if (!paymentUrl) {
             await admin.rpc('restore_session_quota', { p_event_id: eventId, p_session: session });

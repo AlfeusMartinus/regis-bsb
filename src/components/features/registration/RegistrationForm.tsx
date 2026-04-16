@@ -67,7 +67,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     ticketPrice = 35_000,
     event,
     selectedSession,
-    onSessionSelect,
+    onSessionSelect: _onSessionSelect,
 }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');

@@ -108,9 +108,7 @@ export const EventDetail: React.FC = () => {
     const pending = registrants.filter(r => r.status?.toLowerCase() === 'pending');
     const expired = registrants.filter(r => r.status?.toLowerCase() === 'expired');
     const totalRevenue   = paid.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const conversionRate = registrants.length
-        ? Math.round((paid.length / registrants.length) * 100)
-        : 0;
+
 
     // ── Session-level quota breakdown ──────────────────────────────────────────
     const s1Quota     = event.session1_quota     ?? 0;
@@ -119,7 +117,7 @@ export const EventDetail: React.FC = () => {
     const s2Available = event.session2_available ?? 0;
     const totalQuota     = s1Quota + s2Quota;
     const totalAvailable = s1Available + s2Available;
-    const totalUsed      = totalQuota - totalAvailable;
+
 
     const s1Paid    = registrants.filter(r => r.session === 'session1' && SUCCESS_STATUSES.includes(r.status?.toLowerCase())).length;
     const s1Pending = registrants.filter(r => r.session === 'session1' && r.status?.toLowerCase() === 'pending').length;

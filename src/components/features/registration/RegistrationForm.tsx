@@ -352,7 +352,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                     {...register('fullName')}
                                     id="fullName"
                                     type="text"
-                                    placeholder="cth. Budi Santoso"
+                                    placeholder="Budi Santoso"
                                     className={clsx(
                                         'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                         errors.fullName ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -418,7 +418,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                     {...register('domicile')}
                                     id="domicile"
                                     type="text"
-                                    placeholder="cth. Bandung, Jawa Barat"
+                                    placeholder="Bandung, Jawa Barat"
                                     className={clsx(
                                         'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                         errors.domicile ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -463,7 +463,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                             {...register('role')}
                                             id="role"
                                             type="text"
-                                            placeholder="cth. Software Engineer"
+                                            placeholder="Software Engineer"
                                             className={clsx(
                                                 'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                                 errors.role ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -475,7 +475,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                             {...register('institution')}
                                             id="institution"
                                             type="text"
-                                            placeholder="cth. PT. Teknologi Maju"
+                                            placeholder="PT. Teknologi Maju"
                                             className={clsx(
                                                 'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                                 errors.institution ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -493,7 +493,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                             {...register('major')}
                                             id="major"
                                             type="text"
-                                            placeholder="cth. Teknik Informatika"
+                                            placeholder="Teknik Informatika"
                                             className={clsx(
                                                 'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                                 errors.major ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -505,7 +505,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                             {...register('university')}
                                             id="university"
                                             type="text"
-                                            placeholder="cth. Universitas Indonesia"
+                                            placeholder="Universitas Indonesia"
                                             className={clsx(
                                                 'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                                 errors.university ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -733,7 +733,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </div>
 
                 <footer className="text-center text-slate-400 text-xs py-4">
-                    Pembayaran aman diproses oleh <span className="font-semibold text-slate-500">DOKU</span>
+                    Secure payment powered by <span className="font-semibold text-slate-500">DOKU</span>
                 </footer>
             </form>
         </div>

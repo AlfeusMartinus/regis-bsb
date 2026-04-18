@@ -125,7 +125,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         if (!isValid) return;
 
         if (!selectedSession) {
-            setQuotaError('Silakan pilih sesi terlebih dahulu di panel kiri.');
+            setQuotaError('Silakan pilih sesi terlebih dahulu untuk melanjutkan.');
             return;
         }
         setCurrentStep(2);
@@ -581,7 +581,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                             <div className="mt-5 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                                 <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
                                 <p className="text-sm text-amber-800">
-                                    Pastikan Anda sudah memilih sesi di panel kiri sebelum melanjutkan.
+                                    Pastikan Anda sudah memilih sesi di <span className="hidden md:inline">panel kiri</span><span className="md:hidden">bagian atas</span> sebelum melanjutkan.
                                 </p>
                             </div>
                         )}

@@ -49,7 +49,19 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
         },
     ];
 
-    const speakers = Array.isArray(displayEvent.speakers) ? displayEvent.speakers : [];
+    const speakers = selectedSession === 'session1'
+        ? [
+              { name: 'Cassandra Chaidir', title: 'GDE' },
+              { name: 'Surahutomo Aziz Pradana', title: 'GDE' },
+          ]
+        : selectedSession === 'session2'
+        ? [
+              { name: 'Rendy Bambang Junior', title: 'GDE' },
+              { name: 'Jessica Cecilia', title: 'GDE' },
+          ]
+        : Array.isArray(displayEvent.speakers)
+        ? displayEvent.speakers
+        : [];
 
     const titlePillText = displayEvent?.title ? displayEvent.title : 'BWA1 2026';
 
@@ -75,9 +87,18 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
 
             {/* Date + Location blocks */}
             <div className="mb-6">
-                <div className="text-sm font-bold uppercase tracking-widest text-[#1F2937] mb-3">
-                    DAFTAR YUK SEGERA
-                </div>
+                {displayEvent?.category && (
+                    <div className="mb-3">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+                            {displayEvent.category}
+                        </span>
+                    </div>
+                )}
+
+                <div
+                    className="text-sm text-[#1F2937] mb-3"
+                    dangerouslySetInnerHTML={{ __html: displayEvent?.description}}
+                />
 
                 <div className="flex flex-col gap-4">
                     <div className="rounded-xl border border-primary/30 bg-white p-4">
@@ -161,38 +182,44 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
             </div>
 
             {/* Speakers List */}
-            <div className="mt-auto">
-                <div className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">
-                    SPEAKERS
-                </div>
+            {selectedSession && (
+                <div className="mt-auto">
+                    <div className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">
+                        SPEAKERS
+                    </div>
 
-                {speakers.length > 0 ? (
-                    <div className="space-y-3">
-                        {speakers.map((speaker: Speaker, index: number) => (
-                            <div key={index} className="rounded-xl border border-gray-100 bg-white p-4">
-                                <div className="flex items-center gap-3">
-                                    <img
-                                        src={
-                                            speaker.photo_url ||
-                                            `https://ui-avatars.com/api/?name=${encodeURIComponent(speaker.name || 'Speaker')}&background=0D8BFF&color=fff`
-                                        }
-                                        alt={speaker.name}
-                                        className="w-12 h-12 rounded-lg object-cover"
-                                    />
-                                    <div className="min-w-0">
-                                        <div className="text-sm font-bold text-[#111814] truncate">{speaker.name}</div>
-                                        <div className="text-xs text-gray-500 truncate">{speaker.title}</div>
+                    {speakers.length > 0 ? (
+                        <div className="space-y-3">
+                            {speakers.map((speaker: Speaker, index: number) => (
+                                <div key={index} className="rounded-xl border border-gray-100 bg-white p-4">
+                                    <div className="flex items-center gap-3">
+                                        <img
+                                            src={
+                                                speaker.photo_url ||
+                                                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                                    speaker.name
+                                                )}&background=0D8BFF&color=fff`
+                                            }
+                                            alt={speaker.name}
+                                            className="w-12 h-12 rounded-lg object-cover"
+                                        />
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-bold text-[#111814] truncate">
+                                                {speaker.name}
+                                            </div>
+                                            <div className="text-xs text-gray-500 truncate">{speaker.title}</div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="rounded-xl border border-gray-100 bg-white p-4 text-sm text-gray-500">
-                        Speaker akan ditampilkan setelah dipublish.
-                    </div>
-                )}
-            </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-gray-100 bg-white p-4 text-sm text-gray-500">
+                            Speaker akan ditampilkan setelah dipublish.
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

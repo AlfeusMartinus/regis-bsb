@@ -117,6 +117,21 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                         <div className="text-sm font-bold text-[#111814] break-words">
                             {displayEvent?.location || 'Hotel Bandung'}
                         </div>
+                        {displayEvent?.location_detail && (
+                            <div className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                                {displayEvent.location_detail}
+                            </div>
+                        )}
+                        {displayEvent?.location_link && (
+                            <a 
+                                href={displayEvent.location_link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold uppercase hover:bg-emerald-100 transition-colors w-full justify-center border border-emerald-200/50"
+                            >
+                                Open in Google Maps
+                            </a>
+                        )}
                     </div>
                 </div>
             </div>

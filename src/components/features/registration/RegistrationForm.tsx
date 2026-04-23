@@ -155,7 +155,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     phone: formData.whatsapp,
                     gender: formData.gender,
                     domicile: formData.domicile,
-                    kategori: formData.kategori,
+                    category: formData.kategori,
                     role: formData.role,
                     institution: formData.institution,
                     major: formData.major,

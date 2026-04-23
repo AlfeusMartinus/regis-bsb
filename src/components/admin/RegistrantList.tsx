@@ -486,6 +486,12 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
         { label: 'Phone', value: selectedRegistrant.phone || '-' },
         { label: 'Domisili', value: selectedRegistrant.domicile || '-' },
         { label: 'Event', value: selectedRegistrant.events?.title || '-' },
+        { label: 'Sesi / Track', value: selectedRegistrant.session === 'session1' 
+            ? 'Track 1 – Firebase & Gemini AI' 
+            : selectedRegistrant.session === 'session2' 
+                ? 'Track 2 – ADK & AI Product Development' 
+                : '-' 
+        },
         { label: 'Amount', value: `Rp ${(Number(selectedRegistrant.amount) || 0).toLocaleString()}` },
         { label: 'Status Pembayaran', value: selectedRegistrant.status || '-' },
         { label: 'Status Check-in', value: selectedRegistrant.is_attended ? 'Checked-in' : 'Belum' },
@@ -656,6 +662,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                             {!fixedEventId && (
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Event</th>
                             )}
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Track</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Amount</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
                             {mode === 'paid' && (
@@ -693,6 +700,9 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                                             {reg.events?.title || '-'}
                                         </td>
                                     )}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {reg.session === 'session1' ? 'Track 1' : reg.session === 'session2' ? 'Track 2' : '-'}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                         Rp {reg.amount?.toLocaleString()}
                                     </td>

@@ -51,13 +51,13 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
 
     const speakers = selectedSession === 'session1'
         ? [
-              { name: 'Cassandra Chaidir', title: 'GDE' },
-              { name: 'Surahutomo Aziz Pradana', title: 'GDE' },
+              { name: 'Cassandra Chaidir', title: 'Tech Architecture Specialist at Accenture, GDE Cloud' },
+              { name: 'Surahutomo Aziz Pradana', title: 'GDE Firebase, Cloud, & AI' },
           ]
         : selectedSession === 'session2'
         ? [
-              { name: 'Rendy Bambang Junior', title: 'GDE' },
-              { name: 'Jessica Cecilia', title: 'GDE' },
+              { name: 'Rendy Bambang Junior', title: 'VP of Data at Evermos, GDE Cloud & AI' },
+              { name: 'Jessica Cecilia', title: 'Software Engineer at Omni HR, GDE Web' },
           ]
         : Array.isArray(displayEvent.speakers)
         ? displayEvent.speakers

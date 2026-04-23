@@ -197,17 +197,52 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                                     </div>
 
                                     {!isFull && (
-                                        <>
-                                            <div className="mt-3 text-xs font-bold text-[#111814]">
-                                                Sisa {session.available} kursi
+                                        <div className="mt-4">
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="relative flex h-2 w-2">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-emerald-600 tracking-wider uppercase">Live</span>
+                                                </div>
+                                                <div className="text-[11px] font-bold text-[#111814]">
+                                                    {session.available} <span className="text-gray-400 font-medium">/ {session.quota}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Progress Bar Kapasitas */}
+                                            <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative">
+                                                <div 
+                                                    className={[
+                                                        'h-full transition-all duration-1000 ease-out rounded-full relative',
+                                                        (session.available / session.quota) < 0.2 ? 'bg-red-500' : (session.available / session.quota) < 0.5 ? 'bg-amber-500' : 'bg-primary'
+                                                    ].join(' ')}
+                                                    style={{ width: `${Math.max(0, Math.min(100, (1 - (session.available / session.quota)) * 100))}%` }}
+                                                >
+                                                    {/* Shimmer Effect */}
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                                                </div>
                                             </div>
 
-                                            {session.available <= 10 && (
-                                                <div className="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-600 uppercase">
-                                                    Filling Fast
+                                            <style dangerouslySetInnerHTML={{ __html: `
+                                                @keyframes shimmer {
+                                                    0% { transform: translateX(-100%); }
+                                                    100% { transform: translateX(100%); }
+                                                }
+                                            `}} />
+                                            
+                                            <div className="mt-2 flex items-center justify-between">
+                                                <div className="text-[11px] font-bold text-[#111814]">
+                                                    Sisa {session.available} kursi
                                                 </div>
-                                            )}
-                                        </>
+                                                {session.available <= 20 && (
+                                                    <span className="text-[10px] font-bold text-red-500 animate-pulse uppercase">
+                                                        Hampir Habis!
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     )}
                                 </button>
                             );

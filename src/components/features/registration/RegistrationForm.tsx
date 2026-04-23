@@ -121,6 +121,40 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
     // ── Step 1: Validate & advance ──────────────────────────────────────────
     const kategoriValue = watch('kategori');
+    const checkEmailDuplicate = async (email: string) => {
+        try {
+            const { data: existing, error } = await supabase
+                .from('registrations')
+                .select('id, status, session, expired_at')
+                .eq('email', email)
+                .eq('event_id', eventId)
+                .in('status', ['settlement', 'paid', 'success', 'pending'])
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (existing) {
+                const isPending = existing.status === 'pending';
+                const isExpired = isPending && existing.expired_at && new Date(existing.expired_at) < new Date();
+
+                if (!isExpired) {
+                    const sessionName = SESSION_LABELS[existing.session as SessionKey] || existing.session;
+                    setError('email', {
+                        type: 'manual',
+                        message: `Email ini sudah terdaftar di ${sessionName}. Anda hanya diperbolehkan mendaftar di satu track.`,
+                    });
+                    return false;
+                }
+            }
+            return true;
+        } catch (err) {
+            console.error('Error validation duplicate email:', err);
+            return true; 
+        }
+    };
+
     const isWorkingValue = watch('is_working');
 
     const handleNext = async () => {
@@ -141,43 +175,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             return;
         }
 
-        // ── Check for duplicate registration ─────────────────────────────────
         setIsLoading(true);
-        try {
-            const formData = getValues();
-            const { data: existing, error } = await supabase
-                .from('registrations')
-                .select('id, status, session, expired_at')
-                .eq('email', formData.email)
-                .eq('event_id', eventId)
-                .in('status', ['settlement', 'paid', 'success', 'pending'])
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (error) throw error;
-
-            if (existing) {
-                // If it's pending, check if it's already expired
-                const isPending = existing.status === 'pending';
-                const isExpired = isPending && existing.expired_at && new Date(existing.expired_at) < new Date();
-
-                if (!isExpired) {
-                    const sessionName = SESSION_LABELS[existing.session as SessionKey] || existing.session;
-                    setError('email', {
-                        type: 'manual',
-                        message: `Email ini sudah terdaftar di ${sessionName}. Anda hanya diperbolehkan mendaftar di satu track.`,
-                    });
-                    setIsLoading(false);
-                    return;
-                }
-            }
-        } catch (err) {
-            console.error('Error validation duplicate email:', err);
-        } finally {
-            setIsLoading(false);
-        }
-        // ───────────────────────────────────────────────────────────────────
+        const isUnique = await checkEmailDuplicate(getValues('email'));
+        setIsLoading(false);
+        if (!isUnique) return;
 
         setCurrentStep(2);
     };
@@ -223,7 +224,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             });
 
             if (error) {
-                // Check for quota-full error from Edge Function
                 const msg = error.message || '';
                 if (msg.includes('kuota') || msg.includes('penuh') || msg.includes('quota')) {
                     setQuotaError('Mohon maaf, kuota sesi ini baru saja penuh. Silakan pilih sesi lain.');
@@ -235,7 +235,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             }
 
             if (data?.link) {
-                // Store pending data for post-payment processing
                 sessionStorage.setItem('is_initiating_payment', 'true');
                 sessionStorage.setItem('pending_registration_data', JSON.stringify({
                     email: formData.email,
@@ -265,7 +264,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 if (window.loadJokulCheckout) {
                     window.loadJokulCheckout(data.link);
 
-                    // Detect DOKU popup load via PerformanceObserver
                     let observer: PerformanceObserver | null = null;
                     let fallback: ReturnType<typeof setTimeout> | null = null;
 
@@ -286,7 +284,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         });
                         observer.observe({ entryTypes: ['resource'] });
                     } catch {
-                        // PerformanceObserver not supported
                     }
                     fallback = setTimeout(stopLoading, 15_000);
                 } else {
@@ -320,7 +317,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
 
-            // Trigger email / QR Code sending
             const pendingStr = sessionStorage.getItem('pending_registration_data');
             if (pendingStr) {
                 try {
@@ -448,6 +444,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                     id="email"
                                     type="email"
                                     placeholder="nama@email.com"
+                                    onBlur={(e) => {
+                                        const email = e.target.value;
+                                        if (email && !errors.email) {
+                                            checkEmailDuplicate(email);
+                                        }
+                                    }}
                                     className={clsx(
                                         'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                         errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'

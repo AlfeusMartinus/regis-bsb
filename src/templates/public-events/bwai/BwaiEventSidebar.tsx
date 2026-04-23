@@ -12,6 +12,7 @@ export interface BwaiEventSidebarProps {
     event: any;
     selectedSession: SessionKey | null;
     onSessionSelect: (session: SessionKey) => void;
+    hideTracks?: boolean;
 }
 
 function formatIDDate(iso: string) {
@@ -28,6 +29,7 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
     event,
     selectedSession,
     onSessionSelect,
+    hideTracks = false,
 }) => {
     const displayEvent = event ?? {};
     const eventDateStr = displayEvent?.date_time ? formatIDDate(displayEvent.date_time) : '';
@@ -153,64 +155,66 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
             </div>
 
             {/* Track selector */}
-            <div className="mb-8">
-                <div className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">
-                    CHOOSE YOUR TRACK
-                </div>
+            {!hideTracks && (
+                <div className="mb-8">
+                    <div className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">
+                        CHOOSE YOUR TRACK
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {sessions.map((session) => {
-                        const isFull = session.available <= 0;
-                        const isSelected = selectedSession === session.key;
-                        const isClickable = !isFull;
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {sessions.map((session) => {
+                            const isFull = session.available <= 0;
+                            const isSelected = selectedSession === session.key;
+                            const isClickable = !isFull;
 
-                        return (
-                            <button
-                                key={session.key}
-                                type="button"
-                                disabled={!isClickable}
-                                onClick={() => isClickable && onSessionSelect(session.key)}
-                                className={[
-                                    'rounded-xl border p-4 text-left transition-all duration-200',
-                                    isSelected && !isFull
-                                        ? 'border-primary bg-primary/10 shadow-md shadow-primary/20'
-                                        : isFull
-                                        ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
-                                        : 'border-gray-200 bg-white hover:border-primary/40',
-                                ].join(' ')}
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <div>
-                                        <div className="text-sm font-bold text-[#111814]">{session.label}</div>
-                                        <div className="text-xs text-gray-500 mt-1">
-                                            {session.time}
-                                        </div>
-                                    </div>
-                                    {isSelected && !isFull && (
-                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-[#111814]">
-                                            <Check size={16} />
-                                        </span>
-                                    )}
-                                </div>
-
-                                {!isFull && (
-                                    <>
-                                        <div className="mt-3 text-xs font-bold text-[#111814]">
-                                            Sisa {session.available} kursi
-                                        </div>
-
-                                        {session.available <= 10 && (
-                                            <div className="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-600 uppercase">
-                                                Filling Fast
+                            return (
+                                <button
+                                    key={session.key}
+                                    type="button"
+                                    disabled={!isClickable}
+                                    onClick={() => isClickable && onSessionSelect(session.key)}
+                                    className={[
+                                        'rounded-xl border p-4 text-left transition-all duration-200',
+                                        isSelected && !isFull
+                                            ? 'border-primary bg-primary/10 shadow-md shadow-primary/20'
+                                            : isFull
+                                            ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                                            : 'border-gray-200 bg-white hover:border-primary/40',
+                                    ].join(' ')}
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <div className="text-sm font-bold text-[#111814]">{session.label}</div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {session.time}
                                             </div>
+                                        </div>
+                                        {isSelected && !isFull && (
+                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-[#111814]">
+                                                <Check size={16} />
+                                            </span>
                                         )}
-                                    </>
-                                )}
-                            </button>
-                        );
-                    })}
+                                    </div>
+
+                                    {!isFull && (
+                                        <>
+                                            <div className="mt-3 text-xs font-bold text-[#111814]">
+                                                Sisa {session.available} kursi
+                                            </div>
+
+                                            {session.available <= 10 && (
+                                                <div className="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-600 uppercase">
+                                                    Filling Fast
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Speakers List */}
             {selectedSession && (

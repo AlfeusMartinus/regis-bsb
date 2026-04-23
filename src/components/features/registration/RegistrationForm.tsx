@@ -55,6 +55,7 @@ interface RegistrationFormProps {
      * Untuk `bwai`, step 1 dibuat tanpa heading “Data Peserta”.
      */
     uiVariant?: 'default' | 'bwai';
+    onStatusChange?: (status: 'idle' | 'pending' | 'success' | 'cancel') => void;
 }
 
 // ─── Input helper ─────────────────────────────────────────────────────────────
@@ -90,12 +91,18 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     uiVariant = 'default',
     selectedSession,
     onSessionSelect: _onSessionSelect,
+    onStatusChange,
 }) => {
     const isBwai = uiVariant === 'bwai';
     const [currentStep, setCurrentStep] = useState(1);
-    const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
+    const [paymentStatus, _setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
     const [quotaError, setQuotaError] = useState<string | null>(null);
+
+    const setPaymentStatus = (status: 'idle' | 'pending' | 'success' | 'cancel') => {
+        _setPaymentStatus(status);
+        if (onStatusChange) onStatusChange(status);
+    };
 
     const {
         register,
@@ -308,7 +315,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             return;
         }
 
-        if (paymentParam === 'success' || paymentParam === 'result') {
+        if (paymentParam === 'success') {
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
@@ -337,7 +344,36 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 }
                 sessionStorage.removeItem('pending_registration_data');
             }
-        } else if (paymentParam === 'cancel' || paymentParam === 'failed') {
+        } 
+        else if (paymentParam === 'result') {
+            const checkStatus = async () => {
+                const pendingStr = sessionStorage.getItem('pending_registration_data');
+                if (!pendingStr) {
+                    setPaymentStatus('cancel');
+                    return;
+                }
+                const parsed = JSON.parse(pendingStr);
+                const { data } = await supabase
+                    .from('registrations')
+                    .select('status')
+                    .eq('email', parsed.email)
+                    .eq('event_id', eventId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (data && ['settlement', 'paid', 'success'].includes(data.status)) {
+                    setPaymentStatus('success');
+                } else {
+                    setPaymentStatus('cancel');
+                }
+                sessionStorage.removeItem('is_initiating_payment');
+                sessionStorage.removeItem('pending_registration_data');
+                window.history.replaceState({}, '', window.location.pathname);
+            };
+            checkStatus();
+        } 
+        else if (paymentParam === 'cancel' || paymentParam === 'failed') {
             setPaymentStatus('cancel');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);

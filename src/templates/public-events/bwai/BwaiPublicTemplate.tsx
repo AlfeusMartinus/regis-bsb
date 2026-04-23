@@ -16,6 +16,7 @@ import type { PublicEventTemplateProps } from '../types';
  */
 export const BwaiPublicTemplate: React.FC<PublicEventTemplateProps> = ({ event }) => {
     const [selectedSession, setSelectedSession] = useState<SessionKey | null>(null);
+    const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
 
     return (
         <EventThemeProvider theme={bwaiTheme}>
@@ -25,6 +26,7 @@ export const BwaiPublicTemplate: React.FC<PublicEventTemplateProps> = ({ event }
                         event={event}
                         selectedSession={selectedSession}
                         onSessionSelect={setSelectedSession}
+                        hideTracks={paymentStatus === 'success' || paymentStatus === 'cancel'}
                     />
                 }
             >
@@ -36,6 +38,7 @@ export const BwaiPublicTemplate: React.FC<PublicEventTemplateProps> = ({ event }
                     event={event}
                     selectedSession={selectedSession}
                     onSessionSelect={setSelectedSession}
+                    onStatusChange={setPaymentStatus}
                     hideStepper
                     uiVariant="bwai"
                 />

@@ -96,7 +96,7 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
             {/* Hero poster (cropped) */}
             <div className="w-full mb-6">
                 <img
-                    src="/assets/events/bwai/layer_1.svg"
+                    src="/assets/events/bwai/layer_2.svg"
                     alt="BWA1 2026 Logo"
                     className="w-full h-auto object-contain object-center"
                     draggable={false}

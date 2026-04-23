@@ -102,6 +102,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         trigger,
         getValues,
         watch,
+        setError,
         formState: { errors },
     } = useForm<RegistrationFormData>({
         resolver: zodResolver(registrationSchema),
@@ -131,6 +132,45 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             setQuotaError('Silakan pilih sesi terlebih dahulu untuk melanjutkan.');
             return;
         }
+
+        // ── Check for duplicate registration ─────────────────────────────────
+        setIsLoading(true);
+        try {
+            const formData = getValues();
+            const { data: existing, error } = await supabase
+                .from('registrations')
+                .select('id, status, session, expired_at')
+                .eq('email', formData.email)
+                .eq('event_id', eventId)
+                .in('status', ['settlement', 'paid', 'success', 'pending'])
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (existing) {
+                // If it's pending, check if it's already expired
+                const isPending = existing.status === 'pending';
+                const isExpired = isPending && existing.expired_at && new Date(existing.expired_at) < new Date();
+
+                if (!isExpired) {
+                    const sessionName = SESSION_LABELS[existing.session as SessionKey] || existing.session;
+                    setError('email', {
+                        type: 'manual',
+                        message: `Email ini sudah terdaftar di ${sessionName}. Anda hanya diperbolehkan mendaftar di satu track.`,
+                    });
+                    setIsLoading(false);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error('Error validation duplicate email:', err);
+        } finally {
+            setIsLoading(false);
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         setCurrentStep(2);
     };
 

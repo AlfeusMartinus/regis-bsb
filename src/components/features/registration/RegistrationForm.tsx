@@ -23,8 +23,8 @@ const INFO_SOURCE_OPTIONS = [
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SESSION_LABELS: Record<SessionKey, string> = {
-    session1: 'Sesi 1',
-    session2: 'Sesi 2',
+    session1: 'Track 1 – Firebase & Gemini AI',
+    session2: 'Track 2 – ADK & AI Product Development',
 };
 const STEPS = ['Data Diri', 'Konfirmasi & Bayar'];
 
@@ -106,6 +106,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     } = useForm<RegistrationFormData>({
         resolver: zodResolver(registrationSchema),
         mode: 'onChange',
+        defaultValues: {
+            share_data_sponsor: false,
+        },
     });
 
     // ── Step 1: Validate & advance ──────────────────────────────────────────
@@ -158,7 +161,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     major: formData.major,
                     university: formData.university,
                     info_source: formData.info_source,
-                    share_data_sponsor: formData.share_data_sponsor === 'true',
+                    share_data_sponsor: formData.share_data_sponsor,
                     session: selectedSession,
                     eventId,
                     eventName,
@@ -197,7 +200,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     major: formData.major,
                     university: formData.university,
                     info_source: formData.info_source,
-                    share_data_sponsor: formData.share_data_sponsor === 'true',
+                    share_data_sponsor: formData.share_data_sponsor,
                     session: selectedSession,
                     sessionLabel: SESSION_LABELS[selectedSession],
                     eventId,
@@ -418,7 +421,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                     {...register('domicile')}
                                     id="domicile"
                                     type="text"
-                                    placeholder="Bandung, Jawa Barat"
+                                    placeholder="Bandung"
                                     className={clsx(
                                         'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                         errors.domicile ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -547,32 +550,28 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
                             {/* Persetujuan Data ke Sponsor */}
                             <div className="md:col-span-2">
-                                <InputField id="share_data_sponsor" label="Persetujuan Data" required error={errors.share_data_sponsor?.message}>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="flex items-start gap-3 cursor-pointer group">
-                                            <input
-                                                type="radio"
-                                                {...register('share_data_sponsor')}
-                                                value="true"
-                                                className="mt-1 accent-primary cursor-pointer"
-                                            />
-                                            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                                                <span className="font-semibold">Ya</span>, saya setuju data saya dibagikan kepada sponsor acara.
-                                            </span>
-                                        </label>
-                                        <label className="flex items-start gap-3 cursor-pointer group">
-                                            <input
-                                                type="radio"
-                                                {...register('share_data_sponsor')}
-                                                value="false"
-                                                className="mt-1 accent-primary cursor-pointer"
-                                            />
-                                            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                                                <span className="font-semibold">Tidak</span>, saya tidak ingin data saya dibagikan kepada sponsor.
-                                            </span>
-                                        </label>
+                                <label className="flex items-start gap-3 cursor-pointer group p-4 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-primary/50 transition-all">
+                                    <div className="flex h-5 items-center">
+                                        <input
+                                            id="share_data_sponsor"
+                                            type="checkbox"
+                                            {...register('share_data_sponsor')}
+                                            className="size-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                                        />
                                     </div>
-                                </InputField>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-semibold text-gray-900">Persetujuan Data</span>
+                                        <span className="text-sm text-gray-600 leading-relaxed">
+                                            Saya setuju data saya dibagikan kepada sponsor acara untuk keperluan informasi kegiatan di masa mendatang.
+                                        </span>
+                                    </div>
+                                </label>
+                                {errors.share_data_sponsor && (
+                                    <span className="flex items-center gap-1 text-xs text-red-500 font-medium mt-1 ml-1">
+                                        <AlertCircle size={11} />
+                                        {errors.share_data_sponsor.message}
+                                    </span>
+                                )}
                             </div>
                         </div>
 

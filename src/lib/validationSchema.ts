@@ -20,7 +20,7 @@ export const registrationBaseSchema = z.object({
     university:         z.string().optional(),
     // Extra
     info_source:        z.string().min(1, { message: 'Sumber informasi wajib dipilih' }),
-    share_data_sponsor: z.enum(['true', 'false'], { message: 'Pilihan wajib diisi' }),
+    share_data_sponsor: z.boolean(),
 });
 
 export const registrationSchema = registrationBaseSchema.superRefine((data, ctx) => {

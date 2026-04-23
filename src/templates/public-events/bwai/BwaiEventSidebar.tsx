@@ -51,13 +51,29 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
 
     const speakers = selectedSession === 'session1'
         ? [
-              { name: 'Cassandra Chaidir', title: 'Tech Architecture Specialist at Accenture, GDE Cloud' },
-              { name: 'Surahutomo Aziz Pradana', title: 'GDE Firebase, Cloud, & AI' },
+              { 
+                  name: 'Cassandra Chaidir', 
+                  title: 'Tech Architecture Specialist at Accenture, GDE Cloud',
+                  photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/9yw94ec3l9i.jpeg'
+              },
+              { 
+                  name: 'Surahutomo Aziz Pradana', 
+                  title: 'GDE Firebase, Cloud, & AI',
+                  photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/ut9tuqgy9m.png'
+              },
           ]
         : selectedSession === 'session2'
         ? [
-              { name: 'Rendy Bambang Junior', title: 'VP of Data at Evermos, GDE Cloud & AI' },
-              { name: 'Jessica Cecilia', title: 'Software Engineer at Omni HR, GDE Web' },
+              { 
+                  name: 'Rendy Bambang Junior', 
+                  title: 'VP of Data at Evermos, GDE Cloud & AI',
+                  photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/81zpynfgpjj.jpg'
+              },
+              { 
+                  name: 'Jessica Cecilia', 
+                  title: 'Software Engineer at Omni HR, GDE Web',
+                  photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/rovx1qohic.jpg'
+              },
           ]
         : Array.isArray(displayEvent.speakers)
         ? displayEvent.speakers

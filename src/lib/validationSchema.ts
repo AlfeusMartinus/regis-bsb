@@ -12,7 +12,8 @@ export const registrationBaseSchema = z.object({
     gender:             z.enum(['Laki-laki', 'Perempuan'], { message: 'Jenis kelamin wajib dipilih' }),
     domicile:           z.string().min(2, { message: 'Domisili wajib diisi' }),
     kategori:           z.enum(['mahasiswa', 'profesional'], { message: 'Pilih kategori Anda' }),
-    // Profesional-only
+    is_working:         z.string().optional(),
+    // Profesional-only / Umum (Working)
     role:               z.string().optional(),
     institution:        z.string().optional(),
     // Mahasiswa-only
@@ -20,24 +21,29 @@ export const registrationBaseSchema = z.object({
     university:         z.string().optional(),
     // Extra
     info_source:        z.string().min(1, { message: 'Sumber informasi wajib dipilih' }),
-    share_data_sponsor: z.enum(['true', 'false'], { message: 'Pilihan wajib diisi' }),
+    share_data_sponsor: z.boolean(),
 });
 
 export const registrationSchema = registrationBaseSchema.superRefine((data, ctx) => {
-    if (data.kategori === 'profesional') {
-        if (!data.role || data.role.trim() === '') {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Jabatan/Peran wajib diisi', path: ['role'] });
-        }
-        if (!data.institution || data.institution.trim() === '') {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Instansi wajib diisi', path: ['institution'] });
-        }
-    }
     if (data.kategori === 'mahasiswa') {
         if (!data.major || data.major.trim() === '') {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Jurusan wajib diisi', path: ['major'] });
         }
         if (!data.university || data.university.trim() === '') {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Universitas wajib diisi', path: ['university'] });
+        }
+    }
+    if (data.kategori === 'profesional') {
+        if (!data.is_working) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Wajib memilih status pekerjaan', path: ['is_working'] });
+        }
+        if (data.is_working === 'yes') {
+            if (!data.role || data.role.trim() === '') {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Jabatan/Peran wajib diisi', path: ['role'] });
+            }
+            if (!data.institution || data.institution.trim() === '') {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Instansi wajib diisi', path: ['institution'] });
+            }
         }
     }
 });

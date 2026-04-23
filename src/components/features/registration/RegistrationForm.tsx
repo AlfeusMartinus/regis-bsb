@@ -23,8 +23,8 @@ const INFO_SOURCE_OPTIONS = [
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SESSION_LABELS: Record<SessionKey, string> = {
-    session1: 'Sesi 1',
-    session2: 'Sesi 2',
+    session1: 'Track 1 – Firebase & Gemini AI',
+    session2: 'Track 2 – ADK & AI Product Development',
 };
 const STEPS = ['Data Diri', 'Konfirmasi & Bayar'];
 
@@ -55,6 +55,7 @@ interface RegistrationFormProps {
      * Untuk `bwai`, step 1 dibuat tanpa heading “Data Peserta”.
      */
     uiVariant?: 'default' | 'bwai';
+    onStatusChange?: (status: 'idle' | 'pending' | 'success' | 'cancel') => void;
 }
 
 // ─── Input helper ─────────────────────────────────────────────────────────────
@@ -90,26 +91,37 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     uiVariant = 'default',
     selectedSession,
     onSessionSelect: _onSessionSelect,
+    onStatusChange,
 }) => {
     const isBwai = uiVariant === 'bwai';
     const [currentStep, setCurrentStep] = useState(1);
-    const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
+    const [paymentStatus, _setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
     const [quotaError, setQuotaError] = useState<string | null>(null);
+
+    const setPaymentStatus = (status: 'idle' | 'pending' | 'success' | 'cancel') => {
+        _setPaymentStatus(status);
+        if (onStatusChange) onStatusChange(status);
+    };
 
     const {
         register,
         trigger,
         getValues,
         watch,
+        setError,
         formState: { errors },
     } = useForm<RegistrationFormData>({
         resolver: zodResolver(registrationSchema),
         mode: 'onChange',
+        defaultValues: {
+            share_data_sponsor: false,
+        },
     });
 
     // ── Step 1: Validate & advance ──────────────────────────────────────────
     const kategoriValue = watch('kategori');
+    const isWorkingValue = watch('is_working');
 
     const handleNext = async () => {
         setQuotaError(null);
@@ -118,8 +130,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             'kategori', 'info_source', 'share_data_sponsor',
         ];
         const conditionalFields: (keyof RegistrationFormData)[] =
-            kategoriValue === 'profesional' ? ['role', 'institution'] :
-            kategoriValue === 'mahasiswa'   ? ['major', 'university'] : [];
+            kategoriValue === 'mahasiswa'   ? ['major', 'university'] :
+            kategoriValue === 'profesional' ? (isWorkingValue === 'yes' ? ['is_working', 'role', 'institution'] : ['is_working']) : [];
 
         const isValid = await trigger([...baseFields, ...conditionalFields]);
         if (!isValid) return;
@@ -128,6 +140,45 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             setQuotaError('Silakan pilih sesi terlebih dahulu untuk melanjutkan.');
             return;
         }
+
+        // ── Check for duplicate registration ─────────────────────────────────
+        setIsLoading(true);
+        try {
+            const formData = getValues();
+            const { data: existing, error } = await supabase
+                .from('registrations')
+                .select('id, status, session, expired_at')
+                .eq('email', formData.email)
+                .eq('event_id', eventId)
+                .in('status', ['settlement', 'paid', 'success', 'pending'])
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (existing) {
+                // If it's pending, check if it's already expired
+                const isPending = existing.status === 'pending';
+                const isExpired = isPending && existing.expired_at && new Date(existing.expired_at) < new Date();
+
+                if (!isExpired) {
+                    const sessionName = SESSION_LABELS[existing.session as SessionKey] || existing.session;
+                    setError('email', {
+                        type: 'manual',
+                        message: `Email ini sudah terdaftar di ${sessionName}. Anda hanya diperbolehkan mendaftar di satu track.`,
+                    });
+                    setIsLoading(false);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error('Error validation duplicate email:', err);
+        } finally {
+            setIsLoading(false);
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         setCurrentStep(2);
     };
 
@@ -152,13 +203,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     phone: formData.whatsapp,
                     gender: formData.gender,
                     domicile: formData.domicile,
-                    kategori: formData.kategori,
+                    category: formData.kategori,
                     role: formData.role,
                     institution: formData.institution,
                     major: formData.major,
                     university: formData.university,
+                    is_working: formData.is_working,
                     info_source: formData.info_source,
-                    share_data_sponsor: formData.share_data_sponsor === 'true',
+                    share_data_sponsor: formData.share_data_sponsor,
                     session: selectedSession,
                     eventId,
                     eventName,
@@ -197,7 +249,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     major: formData.major,
                     university: formData.university,
                     info_source: formData.info_source,
-                    share_data_sponsor: formData.share_data_sponsor === 'true',
+                    share_data_sponsor: formData.share_data_sponsor,
                     session: selectedSession,
                     sessionLabel: SESSION_LABELS[selectedSession],
                     eventId,
@@ -263,7 +315,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             return;
         }
 
-        if (paymentParam === 'success' || paymentParam === 'result') {
+        if (paymentParam === 'success') {
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
@@ -292,7 +344,36 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 }
                 sessionStorage.removeItem('pending_registration_data');
             }
-        } else if (paymentParam === 'cancel' || paymentParam === 'failed') {
+        } 
+        else if (paymentParam === 'result') {
+            const checkStatus = async () => {
+                const pendingStr = sessionStorage.getItem('pending_registration_data');
+                if (!pendingStr) {
+                    setPaymentStatus('cancel');
+                    return;
+                }
+                const parsed = JSON.parse(pendingStr);
+                const { data } = await supabase
+                    .from('registrations')
+                    .select('status')
+                    .eq('email', parsed.email)
+                    .eq('event_id', eventId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (data && ['settlement', 'paid', 'success'].includes(data.status)) {
+                    setPaymentStatus('success');
+                } else {
+                    setPaymentStatus('cancel');
+                }
+                sessionStorage.removeItem('is_initiating_payment');
+                sessionStorage.removeItem('pending_registration_data');
+                window.history.replaceState({}, '', window.location.pathname);
+            };
+            checkStatus();
+        } 
+        else if (paymentParam === 'cancel' || paymentParam === 'failed') {
             setPaymentStatus('cancel');
             sessionStorage.removeItem('is_initiating_payment');
             window.history.replaceState({}, '', window.location.pathname);
@@ -418,7 +499,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                     {...register('domicile')}
                                     id="domicile"
                                     type="text"
-                                    placeholder="Bandung, Jawa Barat"
+                                    placeholder="Bandung"
                                     className={clsx(
                                         'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                         errors.domicile ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -455,34 +536,57 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                 )}
                             </div>
 
-                            {/* Conditional: Profesional fields */}
+                            {/* Conditional: Profesional status kerja fields */}
                             {kategoriValue === 'profesional' && (
-                                <>
-                                    <InputField id="role" label="Jabatan / Peran" required error={errors.role?.message}>
-                                        <input
-                                            {...register('role')}
-                                            id="role"
-                                            type="text"
-                                            placeholder="Software Engineer"
-                                            className={clsx(
-                                                'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
-                                                errors.role ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                                            )}
-                                        />
+                                <div className="flex flex-col gap-5 md:col-span-2">
+                                    <InputField id="is_working" label="Apakah anda sudah bekerja saat ini?" required error={errors.is_working?.message}>
+                                        <div className="relative">
+                                            <select
+                                                {...register('is_working')}
+                                                id="is_working"
+                                                defaultValue=""
+                                                className={clsx(
+                                                    'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none appearance-none cursor-pointer text-sm',
+                                                    errors.is_working ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                                )}
+                                            >
+                                                <option disabled value="">Pilih jawaban</option>
+                                                <option value="yes">Ya, sudah bekerja</option>
+                                                <option value="no">Belum / Sedang mencari kerja</option>
+                                            </select>
+                                            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-lg">expand_more</span>
+                                        </div>
                                     </InputField>
-                                    <InputField id="institution" label="Instansi" required error={errors.institution?.message}>
-                                        <input
-                                            {...register('institution')}
-                                            id="institution"
-                                            type="text"
-                                            placeholder="PT. Teknologi Maju"
-                                            className={clsx(
-                                                'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
-                                                errors.institution ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                                            )}
-                                        />
-                                    </InputField>
-                                </>
+
+                                    {isWorkingValue === 'yes' && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-[fadeIn_0.2s_ease-in-out]">
+                                            <InputField id="role" label="Jabatan / Peran" required error={errors.role?.message}>
+                                                <input
+                                                    {...register('role')}
+                                                    id="role"
+                                                    type="text"
+                                                    placeholder="Software Engineer"
+                                                    className={clsx(
+                                                        'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                                        errors.role ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                                    )}
+                                                />
+                                            </InputField>
+                                            <InputField id="institution" label="Instansi" required error={errors.institution?.message}>
+                                                <input
+                                                    {...register('institution')}
+                                                    id="institution"
+                                                    type="text"
+                                                    placeholder="PT. Teknologi Maju"
+                                                    className={clsx(
+                                                        'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                                        errors.institution ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                                    )}
+                                                />
+                                            </InputField>
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             {/* Conditional: Mahasiswa fields */}
@@ -547,32 +651,28 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
                             {/* Persetujuan Data ke Sponsor */}
                             <div className="md:col-span-2">
-                                <InputField id="share_data_sponsor" label="Persetujuan Data" required error={errors.share_data_sponsor?.message}>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="flex items-start gap-3 cursor-pointer group">
-                                            <input
-                                                type="radio"
-                                                {...register('share_data_sponsor')}
-                                                value="true"
-                                                className="mt-1 accent-primary cursor-pointer"
-                                            />
-                                            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                                                <span className="font-semibold">Ya</span>, saya setuju data saya dibagikan kepada sponsor acara.
-                                            </span>
-                                        </label>
-                                        <label className="flex items-start gap-3 cursor-pointer group">
-                                            <input
-                                                type="radio"
-                                                {...register('share_data_sponsor')}
-                                                value="false"
-                                                className="mt-1 accent-primary cursor-pointer"
-                                            />
-                                            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                                                <span className="font-semibold">Tidak</span>, saya tidak ingin data saya dibagikan kepada sponsor.
-                                            </span>
-                                        </label>
+                                <label className="flex items-start gap-3 cursor-pointer group p-4 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-primary/50 transition-all">
+                                    <div className="flex h-5 items-center">
+                                        <input
+                                            id="share_data_sponsor"
+                                            type="checkbox"
+                                            {...register('share_data_sponsor')}
+                                            className="size-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                                        />
                                     </div>
-                                </InputField>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-semibold text-gray-900">Persetujuan Data</span>
+                                        <span className="text-sm text-gray-600 leading-relaxed">
+                                            Saya setuju data saya dibagikan kepada sponsor acara untuk keperluan informasi kegiatan di masa mendatang.
+                                        </span>
+                                    </div>
+                                </label>
+                                {errors.share_data_sponsor && (
+                                    <span className="flex items-center gap-1 text-xs text-red-500 font-medium mt-1 ml-1">
+                                        <AlertCircle size={11} />
+                                        {errors.share_data_sponsor.message}
+                                    </span>
+                                )}
                             </div>
                         </div>
 

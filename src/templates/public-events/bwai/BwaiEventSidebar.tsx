@@ -12,6 +12,7 @@ export interface BwaiEventSidebarProps {
     event: any;
     selectedSession: SessionKey | null;
     onSessionSelect: (session: SessionKey) => void;
+    hideTracks?: boolean;
 }
 
 function formatIDDate(iso: string) {
@@ -28,6 +29,7 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
     event,
     selectedSession,
     onSessionSelect,
+    hideTracks = false,
 }) => {
     const displayEvent = event ?? {};
     const eventDateStr = displayEvent?.date_time ? formatIDDate(displayEvent.date_time) : '';
@@ -35,29 +37,45 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
     const sessions: SessionInfo[] = [
         {
             key: 'session1',
-            label: 'SESI 1',
+            label: 'Track 1 – Firebase & Gemini AI',
             time: displayEvent.session1_time || '07:30 - 12:00',
-            quota: displayEvent.session1_quota ?? 110,
-            available: displayEvent.session1_available ?? displayEvent.session1_quota ?? 110,
+            quota: displayEvent.session1_quota ?? 125,
+            available: displayEvent.session1_available ?? displayEvent.session1_quota ?? 125,
         },
         {
             key: 'session2',
-            label: 'SESI 2',
+            label: 'Track 2 – ADK & AI Product Development',
             time: displayEvent.session2_time || '12:30 - 16:00',
-            quota: displayEvent.session2_quota ?? 110,
-            available: displayEvent.session2_available ?? displayEvent.session2_quota ?? 110,
+            quota: displayEvent.session2_quota ?? 125,
+            available: displayEvent.session2_available ?? displayEvent.session2_quota ?? 125,
         },
     ];
 
     const speakers = selectedSession === 'session1'
         ? [
-              { name: 'Cassandra Chaidir', title: 'GDE' },
-              { name: 'Surahutomo Aziz Pradana', title: 'GDE' },
+              { 
+                  name: 'Cassandra Chaidir', 
+                  title: 'Tech Architecture Specialist at Accenture, GDE Cloud',
+                  photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/9yw94ec3l9i.jpeg'
+              },
+              { 
+                  name: 'Surahutomo Aziz Pradana', 
+                  title: 'GDE Firebase, Cloud, & AI',
+                  photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/ut9tuqgy9m.png'
+              },
           ]
         : selectedSession === 'session2'
         ? [
-              { name: 'Rendy Bambang Junior', title: 'GDE' },
-              { name: 'Jessica Cecilia', title: 'GDE' },
+              { 
+                  name: 'Rendy Bambang Junior', 
+                  title: 'VP of Data at Evermos, GDE Cloud & AI',
+                  photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/81zpynfgpjj.jpg'
+              },
+              { 
+                  name: 'Jessica Cecilia', 
+                  title: 'Software Engineer at Omni HR, GDE Web',
+                  photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/rovx1qohic.jpg'
+              },
           ]
         : Array.isArray(displayEvent.speakers)
         ? displayEvent.speakers
@@ -117,69 +135,86 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                         <div className="text-sm font-bold text-[#111814] break-words">
                             {displayEvent?.location || 'Hotel Bandung'}
                         </div>
+                        {displayEvent?.location_detail && (
+                            <div className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                                {displayEvent.location_detail}
+                            </div>
+                        )}
+                        {displayEvent?.location_link && (
+                            <a 
+                                href={displayEvent.location_link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold uppercase hover:bg-emerald-100 transition-colors w-full justify-center border border-emerald-200/50"
+                            >
+                                Open in Google Maps
+                            </a>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Track selector */}
-            <div className="mb-8">
-                <div className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">
-                    CHOOSE YOUR TRACK
-                </div>
+            {!hideTracks && (
+                <div className="mb-8">
+                    <div className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">
+                        CHOOSE YOUR TRACK
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {sessions.map((session) => {
-                        const isFull = session.available <= 0;
-                        const isSelected = selectedSession === session.key;
-                        const isClickable = !isFull;
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {sessions.map((session) => {
+                            const isFull = session.available <= 0;
+                            const isSelected = selectedSession === session.key;
+                            const isClickable = !isFull;
 
-                        return (
-                            <button
-                                key={session.key}
-                                type="button"
-                                disabled={!isClickable}
-                                onClick={() => isClickable && onSessionSelect(session.key)}
-                                className={[
-                                    'rounded-xl border p-4 text-left transition-all duration-200',
-                                    isSelected && !isFull
-                                        ? 'border-primary bg-primary/10 shadow-md shadow-primary/20'
-                                        : isFull
-                                        ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
-                                        : 'border-gray-200 bg-white hover:border-primary/40',
-                                ].join(' ')}
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <div>
-                                        <div className="text-sm font-bold text-[#111814]">{session.label}</div>
-                                        <div className="text-xs text-gray-500 mt-1">
-                                            {session.time}
-                                        </div>
-                                    </div>
-                                    {isSelected && !isFull && (
-                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-[#111814]">
-                                            <Check size={16} />
-                                        </span>
-                                    )}
-                                </div>
-
-                                {!isFull && (
-                                    <>
-                                        <div className="mt-3 text-xs font-bold text-[#111814]">
-                                            Sisa {session.available} kursi
-                                        </div>
-
-                                        {session.available <= 10 && (
-                                            <div className="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-600 uppercase">
-                                                Filling Fast
+                            return (
+                                <button
+                                    key={session.key}
+                                    type="button"
+                                    disabled={!isClickable}
+                                    onClick={() => isClickable && onSessionSelect(session.key)}
+                                    className={[
+                                        'rounded-xl border p-4 text-left transition-all duration-200',
+                                        isSelected && !isFull
+                                            ? 'border-primary bg-primary/10 shadow-md shadow-primary/20'
+                                            : isFull
+                                            ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                                            : 'border-gray-200 bg-white hover:border-primary/40',
+                                    ].join(' ')}
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <div className="text-sm font-bold text-[#111814]">{session.label}</div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {session.time}
                                             </div>
+                                        </div>
+                                        {isSelected && !isFull && (
+                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-[#111814]">
+                                                <Check size={16} />
+                                            </span>
                                         )}
-                                    </>
-                                )}
-                            </button>
-                        );
-                    })}
+                                    </div>
+
+                                    {!isFull && (
+                                        <>
+                                            <div className="mt-3 text-xs font-bold text-[#111814]">
+                                                Sisa {session.available} kursi
+                                            </div>
+
+                                            {session.available <= 10 && (
+                                                <div className="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-600 uppercase">
+                                                    Filling Fast
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Speakers List */}
             {selectedSession && (

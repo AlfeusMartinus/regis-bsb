@@ -492,6 +492,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                 ? 'Track 2 – ADK & AI Product Development' 
                 : '-' 
         },
+        { label: 'Status Kerja', value: selectedRegistrant.is_working === 'yes' ? 'Sudah Bekerja' : selectedRegistrant.is_working === 'no' ? 'Belum / Mencari Kerja' : '-' },
         { label: 'Amount', value: `Rp ${(Number(selectedRegistrant.amount) || 0).toLocaleString()}` },
         { label: 'Status Pembayaran', value: selectedRegistrant.status || '-' },
         { label: 'Status Check-in', value: selectedRegistrant.is_attended ? 'Checked-in' : 'Belum' },

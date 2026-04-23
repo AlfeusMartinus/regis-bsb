@@ -114,6 +114,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
     // ── Step 1: Validate & advance ──────────────────────────────────────────
     const kategoriValue = watch('kategori');
+    const isWorkingValue = watch('is_working');
 
     const handleNext = async () => {
         setQuotaError(null);
@@ -122,8 +123,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             'kategori', 'info_source', 'share_data_sponsor',
         ];
         const conditionalFields: (keyof RegistrationFormData)[] =
-            kategoriValue === 'profesional' ? ['role', 'institution'] :
-            kategoriValue === 'mahasiswa'   ? ['major', 'university'] : [];
+            kategoriValue === 'mahasiswa'   ? ['major', 'university'] :
+            (kategoriValue === 'umum' || kategoriValue === 'profesional')
+                ? (isWorkingValue === 'yes' ? ['is_working', 'role', 'institution'] : ['is_working']) : [];
 
         const isValid = await trigger([...baseFields, ...conditionalFields]);
         if (!isValid) return;
@@ -200,6 +202,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     institution: formData.institution,
                     major: formData.major,
                     university: formData.university,
+                    is_working: formData.is_working,
                     info_source: formData.info_source,
                     share_data_sponsor: formData.share_data_sponsor,
                     session: selectedSession,
@@ -487,6 +490,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                         <option disabled value="">Pilih kategori Anda</option>
                                         <option value="mahasiswa">Mahasiswa</option>
                                         <option value="profesional">Profesional</option>
+                                        <option value="umum">Umum</option>
                                     </select>
                                     <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-lg">expand_more</span>
                                 </div>
@@ -498,34 +502,57 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                 )}
                             </div>
 
-                            {/* Conditional: Profesional fields */}
-                            {kategoriValue === 'profesional' && (
-                                <>
-                                    <InputField id="role" label="Jabatan / Peran" required error={errors.role?.message}>
-                                        <input
-                                            {...register('role')}
-                                            id="role"
-                                            type="text"
-                                            placeholder="Software Engineer"
-                                            className={clsx(
-                                                'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
-                                                errors.role ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                                            )}
-                                        />
+                            {/* Conditional: Umum & Profesional fields */}
+                            {(kategoriValue === 'umum' || kategoriValue === 'profesional') && (
+                                <div className="flex flex-col gap-5 md:col-span-2">
+                                    <InputField id="is_working" label="Apakah anda sudah bekerja saat ini?" required error={errors.is_working?.message}>
+                                        <div className="relative">
+                                            <select
+                                                {...register('is_working')}
+                                                id="is_working"
+                                                defaultValue=""
+                                                className={clsx(
+                                                    'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none appearance-none cursor-pointer text-sm',
+                                                    errors.is_working ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                                )}
+                                            >
+                                                <option disabled value="">Pilih jawaban</option>
+                                                <option value="yes">Ya, sudah bekerja</option>
+                                                <option value="no">Belum / Sedang mencari kerja</option>
+                                            </select>
+                                            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-lg">expand_more</span>
+                                        </div>
                                     </InputField>
-                                    <InputField id="institution" label="Instansi" required error={errors.institution?.message}>
-                                        <input
-                                            {...register('institution')}
-                                            id="institution"
-                                            type="text"
-                                            placeholder="PT. Teknologi Maju"
-                                            className={clsx(
-                                                'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
-                                                errors.institution ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                                            )}
-                                        />
-                                    </InputField>
-                                </>
+
+                                    {isWorkingValue === 'yes' && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-[fadeIn_0.2s_ease-in-out]">
+                                            <InputField id="role" label="Jabatan / Peran" required error={errors.role?.message}>
+                                                <input
+                                                    {...register('role')}
+                                                    id="role"
+                                                    type="text"
+                                                    placeholder="Software Engineer"
+                                                    className={clsx(
+                                                        'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                                        errors.role ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                                    )}
+                                                />
+                                            </InputField>
+                                            <InputField id="institution" label="Instansi" required error={errors.institution?.message}>
+                                                <input
+                                                    {...register('institution')}
+                                                    id="institution"
+                                                    type="text"
+                                                    placeholder="PT. Teknologi Maju"
+                                                    className={clsx(
+                                                        'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
+                                                        errors.institution ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                                                    )}
+                                                />
+                                            </InputField>
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             {/* Conditional: Mahasiswa fields */}

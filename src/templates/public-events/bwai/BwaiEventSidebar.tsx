@@ -39,15 +39,15 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
             key: 'session1',
             label: 'Track 1 – Firebase & Gemini AI',
             time: displayEvent.session1_time || '07:30 - 12:00',
-            quota: displayEvent.session1_quota ?? 110,
-            available: displayEvent.session1_available ?? displayEvent.session1_quota ?? 110,
+            quota: displayEvent.session1_quota ?? 125,
+            available: displayEvent.session1_available ?? displayEvent.session1_quota ?? 125,
         },
         {
             key: 'session2',
             label: 'Track 2 – ADK & AI Product Development',
             time: displayEvent.session2_time || '12:30 - 16:00',
-            quota: displayEvent.session2_quota ?? 110,
-            available: displayEvent.session2_available ?? displayEvent.session2_quota ?? 110,
+            quota: displayEvent.session2_quota ?? 125,
+            available: displayEvent.session2_available ?? displayEvent.session2_quota ?? 125,
         },
     ];
 

@@ -124,8 +124,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         ];
         const conditionalFields: (keyof RegistrationFormData)[] =
             kategoriValue === 'mahasiswa'   ? ['major', 'university'] :
-            (kategoriValue === 'umum' || kategoriValue === 'profesional')
-                ? (isWorkingValue === 'yes' ? ['is_working', 'role', 'institution'] : ['is_working']) : [];
+            kategoriValue === 'profesional' ? (isWorkingValue === 'yes' ? ['is_working', 'role', 'institution'] : ['is_working']) : [];
 
         const isValid = await trigger([...baseFields, ...conditionalFields]);
         if (!isValid) return;
@@ -490,7 +489,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                         <option disabled value="">Pilih kategori Anda</option>
                                         <option value="mahasiswa">Mahasiswa</option>
                                         <option value="profesional">Profesional</option>
-                                        <option value="umum">Umum</option>
                                     </select>
                                     <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-lg">expand_more</span>
                                 </div>
@@ -502,8 +500,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                                 )}
                             </div>
 
-                            {/* Conditional: Umum & Profesional fields */}
-                            {(kategoriValue === 'umum' || kategoriValue === 'profesional') && (
+                            {/* Conditional: Profesional status kerja fields */}
+                            {kategoriValue === 'profesional' && (
                                 <div className="flex flex-col gap-5 md:col-span-2">
                                     <InputField id="is_working" label="Apakah anda sudah bekerja saat ini?" required error={errors.is_working?.message}>
                                         <div className="relative">

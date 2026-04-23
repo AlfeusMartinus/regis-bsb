@@ -11,7 +11,7 @@ export const registrationBaseSchema = z.object({
         .regex(/^\d+$/, { message: 'Hanya boleh angka' }),
     gender:             z.enum(['Laki-laki', 'Perempuan'], { message: 'Jenis kelamin wajib dipilih' }),
     domicile:           z.string().min(2, { message: 'Domisili wajib diisi' }),
-    kategori:           z.enum(['mahasiswa', 'profesional', 'umum'], { message: 'Pilih kategori Anda' }),
+    kategori:           z.enum(['mahasiswa', 'profesional'], { message: 'Pilih kategori Anda' }),
     is_working:         z.string().optional(),
     // Profesional-only / Umum (Working)
     role:               z.string().optional(),
@@ -33,7 +33,7 @@ export const registrationSchema = registrationBaseSchema.superRefine((data, ctx)
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Universitas wajib diisi', path: ['university'] });
         }
     }
-    if (data.kategori === 'umum' || data.kategori === 'profesional') {
+    if (data.kategori === 'profesional') {
         if (!data.is_working) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Wajib memilih status pekerjaan', path: ['is_working'] });
         }

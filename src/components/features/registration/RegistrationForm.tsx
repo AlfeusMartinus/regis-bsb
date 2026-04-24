@@ -251,6 +251,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     share_data_sponsor: formData.share_data_sponsor,
                     session: selectedSession,
                     sessionLabel: SESSION_LABELS[selectedSession],
+                    sessionTime: selectedSession === 'session1'
+                        ? event?.session1_time || '07:15 - 12:00'
+                        : selectedSession === 'session2'
+                            ? event?.session2_time || '13:00 - 17:00'
+                            : undefined,
                     eventId,
                     eventName: eventName || 'Acara',
                     ticketId: data.registrationId || `REG-${Date.now()}`,

@@ -360,6 +360,16 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
             location: reg.events?.location,
             location_detail: reg.events?.location_detail,
             location_link: reg.events?.location_link,
+            sessionLabel: reg.session === 'session1' 
+                ? 'Track 1 – Firebase & Gemini AI' 
+                : reg.session === 'session2' 
+                    ? 'Track 2 – ADK & AI Product Development' 
+                    : undefined,
+            sessionTime: reg.session === 'session1'
+                ? reg.events?.session1_time || '07:15 - 12:00'
+                : reg.session === 'session2'
+                    ? reg.events?.session2_time || '13:00 - 17:00'
+                    : undefined,
         };
 
         const response = await fetch('/api/send-email', {

@@ -32,3 +32,6 @@ supabase/
 *.sln
 *.sw?
 .vercel
+
+.vercel
+.env*.local

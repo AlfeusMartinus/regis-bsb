@@ -342,6 +342,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             }
         } 
         else if (paymentParam === 'result') {
+            setPaymentStatus('pending');
             const checkStatus = async () => {
                 const pendingStr = sessionStorage.getItem('pending_registration_data');
                 if (!pendingStr) {
@@ -349,23 +350,37 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     return;
                 }
                 const parsed = JSON.parse(pendingStr);
-                const { data } = await supabase
-                    .from('registrations')
-                    .select('status')
-                    .eq('email', parsed.email)
-                    .eq('event_id', eventId)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                let maxRetries = 10; // Poll up to 10 times (30 seconds)
+                
+                const pollDB = async () => {
+                    const { data } = await supabase
+                        .from('registrations')
+                        .select('status')
+                        .eq('email', parsed.email)
+                        .eq('event_id', eventId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
 
-                if (data && ['settlement', 'paid', 'success'].includes(data.status)) {
-                    setPaymentStatus('success');
-                } else {
-                    setPaymentStatus('cancel');
-                }
-                sessionStorage.removeItem('is_initiating_payment');
-                sessionStorage.removeItem('pending_registration_data');
-                window.history.replaceState({}, '', window.location.pathname);
+                    if (data && ['settlement', 'paid', 'success'].includes(data.status)) {
+                        setPaymentStatus('success');
+                        finishPolling();
+                    } else if (data && data.status === 'pending' && maxRetries > 0) {
+                        maxRetries--;
+                        setTimeout(pollDB, 3000);
+                    } else {
+                        setPaymentStatus('cancel');
+                        finishPolling();
+                    }
+                };
+
+                const finishPolling = () => {
+                    sessionStorage.removeItem('is_initiating_payment');
+                    sessionStorage.removeItem('pending_registration_data');
+                    window.history.replaceState({}, '', window.location.pathname);
+                };
+
+                pollDB();
             };
             checkStatus();
         } 
@@ -392,6 +407,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     };
 
     // ── Render: post-payment states ─────────────────────────────────────────
+    if (paymentStatus === 'pending') {
+        return (
+            <div className="w-full flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[400px] animate-[fadeIn_0.5s_ease-out]">
+                <Loader2 className="w-12 h-12 text-primary animate-spin mb-6" />
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Memverifikasi Pembayaran...</h3>
+                <p className="text-base text-gray-500 max-w-md">Mohon tunggu sebentar, kami sedang mengecek status pembayaran Anda. Jangan tutup halaman ini.</p>
+            </div>
+        );
+    }
     if (paymentStatus === 'success') return <SuccessView onRegisterOther={handleRegisterOther} />;
     if (paymentStatus === 'cancel') return <CancelView onRetry={handleRetryPayment} />;
 

@@ -10,7 +10,7 @@ export const checkAndExpireTransactions = async () => {
 
     const { data: pendingRegs, error } = await supabase
         .from('registrations')
-        .select('id, created_at')
+        .select('id, created_at, event_id, session')
         .eq('status', 'pending')
         .lt('created_at', expiryTime);
 
@@ -30,7 +30,19 @@ export const checkAndExpireTransactions = async () => {
     if (updateError) {
         console.error('Error expiring transactions:', updateError);
     } else {
-        console.log(`Expired ${idsToExpire.length} transaction(s).`);
+        console.log(`Expired ${idsToExpire.length} transaction(s). Restoring quotas...`);
+        // Restore quota for each expired transaction
+        for (const reg of pendingRegs) {
+            if (reg.event_id && reg.session) {
+                const { error: restoreErr } = await supabase.rpc('restore_session_quota', {
+                    p_event_id: reg.event_id,
+                    p_session: reg.session
+                });
+                if (restoreErr) {
+                    console.error(`Failed to restore quota for reg ${reg.id}:`, restoreErr);
+                }
+            }
+        }
     }
 };
 

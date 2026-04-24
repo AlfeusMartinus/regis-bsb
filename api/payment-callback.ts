@@ -254,7 +254,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .eq('id', registration.id);
 
         // 2. Restore quota (+1) only if slot was previously held (PENDING)
-        if (registration.session && registration.event_id) {
+        if (registration.status === 'pending' && registration.session && registration.event_id) {
             const { error: restoreErr } = await admin.rpc('restore_session_quota', {
                 p_event_id: registration.event_id,
                 p_session:  registration.session,

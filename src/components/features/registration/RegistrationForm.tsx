@@ -123,19 +123,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     const kategoriValue = watch('kategori');
     const checkEmailDuplicate = async (email: string) => {
         try {
-            const { data: existing, error } = await supabase
-                .from('registrations')
-                .select('id, status, session, expired_at')
-                .eq('email', email)
-                .eq('event_id', eventId)
-                .in('status', ['settlement', 'paid', 'success', 'pending'])
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+            const { data: existing, error } = await supabase.rpc('check_email_duplicate_v2', {
+                p_email: email,
+                p_event_id: eventId
+            });
 
             if (error) throw error;
 
-            if (existing) {
+            if (existing && existing.is_duplicate) {
                 const isPending = existing.status === 'pending';
                 const isExpired = isPending && existing.expired_at && new Date(existing.expired_at) < new Date();
 
@@ -474,16 +469,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                             {/* Email */}
                             <InputField id="email" label="Alamat Email" required error={errors.email?.message}>
                                 <input
-                                    {...register('email')}
+                                    {...register('email', {
+                                        onBlur: (e) => {
+                                            const email = e.target.value;
+                                            if (email && !errors.email) {
+                                                checkEmailDuplicate(email);
+                                            }
+                                        }
+                                    })}
                                     id="email"
                                     type="email"
                                     placeholder="nama@email.com"
-                                    onBlur={(e) => {
-                                        const email = e.target.value;
-                                        if (email && !errors.email) {
-                                            checkEmailDuplicate(email);
-                                        }
-                                    }}
                                     className={clsx(
                                         'w-full h-12 px-4 rounded-lg border bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all outline-none text-sm',
                                         errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'

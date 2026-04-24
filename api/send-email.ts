@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Set up email options with the HTML layout
         // Using explicit display name with matching SMTP_USER to avoid 553 error
-        const fromAddress = `"Registrasi Event BSB" <${process.env.SMTP_USER}>`;
+        const fromAddress = `"Registrasi Event GDG Bandung" <${process.env.SMTP_USER}>`;
         console.log('Attempting to send email from:', fromAddress);
 
         const mailOptions = {

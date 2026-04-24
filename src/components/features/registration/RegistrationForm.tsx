@@ -312,6 +312,23 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             return;
         }
 
+        const triggerEmail = (parsedData: any) => {
+            fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(parsedData),
+            })
+                .then(async (res) => {
+                    const raw = await res.text();
+                    let json: any = {};
+                    try { json = raw ? JSON.parse(raw) : {}; } catch { json = {}; }
+                    if (!res.ok || json?.success === false) {
+                        console.error('Email API failed:', json?.message || raw);
+                    }
+                })
+                .catch((e) => console.error('Email trigger failed:', e));
+        };
+
         if (paymentParam === 'success') {
             setPaymentStatus('success');
             sessionStorage.removeItem('is_initiating_payment');
@@ -321,20 +338,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             if (pendingStr) {
                 try {
                     const parsed = JSON.parse(pendingStr);
-                    fetch('/api/send-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(parsed),
-                    })
-                        .then(async (res) => {
-                            const raw = await res.text();
-                            let json: any = {};
-                            try { json = raw ? JSON.parse(raw) : {}; } catch { json = {}; }
-                            if (!res.ok || json?.success === false) {
-                                console.error('Email API failed:', json?.message || raw);
-                            }
-                        })
-                        .catch((e) => console.error('Email trigger failed:', e));
+                    triggerEmail(parsed);
                 } catch (e) {
                     console.error('Parse error:', e);
                 }
@@ -364,6 +368,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
                     if (data && ['settlement', 'paid', 'success'].includes(data.status)) {
                         setPaymentStatus('success');
+                        triggerEmail(parsed);
                         finishPolling();
                     } else if (data && data.status === 'pending' && maxRetries > 0) {
                         maxRetries--;

@@ -98,6 +98,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     const [paymentStatus, _setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
     const [isLoading, setIsLoading] = useState(false);
     const [quotaError, setQuotaError] = useState<string | null>(null);
+    const [pendingRegInfo, setPendingRegInfo] = useState<{ msg: string; link: string } | null>(null);
 
     const setPaymentStatus = (status: 'idle' | 'pending' | 'success' | 'cancel') => {
         _setPaymentStatus(status);
@@ -219,7 +220,23 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             });
 
             if (error) {
-                const msg = error.message || '';
+                let errObj: any = error;
+                if (error?.context && typeof error.context.json === 'function') {
+                    try { errObj = await error.context.json(); } catch(e) {}
+                } else if (error?.context) {
+                    errObj = error.context;
+                }
+
+                const msg = errObj?.error || error?.message || '';
+                const code = errObj?.code || error?.code;
+                const link = errObj?.link || error?.link;
+
+                if (code === 'PENDING_REGISTRATION' && link) {
+                    setPendingRegInfo({ msg, link });
+                    setIsLoading(false);
+                    return;
+                }
+
                 if (msg.includes('kuota') || msg.includes('penuh') || msg.includes('quota')) {
                     setQuotaError('Mohon maaf, kuota sesi ini baru saja penuh. Silakan pilih sesi lain.');
                 } else {
@@ -868,6 +885,42 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     Secure payment powered by <span className="font-semibold text-slate-500">DOKU</span>
                 </footer>
             </form>
+
+            {/* Pending Registration Popup Modal */}
+            {pendingRegInfo && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3 mb-4 text-amber-600">
+                            <AlertCircle size={28} />
+                            <h3 className="text-lg font-bold text-gray-900">Pembayaran Tertunda</h3>
+                        </div>
+                        <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                            {pendingRegInfo.msg || 'Anda memiliki pendaftaran yang sedang diproses. Silakan selesaikan pembayaran sebelumnya atau tunggu pendaftaran kadaluwarsa.'}
+                        </p>
+                        <div className="flex flex-col gap-3 sm:flex-row-reverse">
+                            <button
+                                onClick={() => {
+                                    if (window.loadJokulCheckout) {
+                                        window.loadJokulCheckout(pendingRegInfo.link);
+                                    } else {
+                                        window.location.href = pendingRegInfo.link;
+                                    }
+                                    setPendingRegInfo(null);
+                                }}
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
+                            >
+                                Lanjutkan Pembayaran
+                            </button>
+                            <button
+                                onClick={() => setPendingRegInfo(null)}
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm hover:bg-gray-200 transition-colors"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

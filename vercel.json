@@ -3,7 +3,6 @@
     { "source": "/api/send-email",         "destination": "/api/send-email" },
     { "source": "/api/payment-callback",   "destination": "/api/payment-callback" },
     { "source": "/api/qr",                 "destination": "/api/qr" },
-    { "source": "/api/broadcast-email",    "destination": "/api/broadcast-email" },
-    { "source": "/(.*)",                   "destination": "/" }
+    { "source": "/api/broadcast-email",    "destination": "/api/broadcast-email" }
   ]
 }

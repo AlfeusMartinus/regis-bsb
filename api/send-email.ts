@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const {
-        email, name, eventName, eventId, ticketId, date_time, location, location_detail, location_link
+        email, name, eventName, eventId, ticketId, date_time, location, location_detail, location_link, sessionLabel, sessionTime
     } = req.body;
 
     if (!email || !name) {
@@ -39,15 +39,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         // Date and Time Formatting
-        const eventDateObj = date_time ? new Date(date_time) : new Date();
-        const endDateObj = new Date(eventDateObj.getTime() + 2 * 60 * 60 * 1000); // add 2 hours
+        let eventDateObj = date_time ? new Date(date_time) : new Date();
+        let endDateObj = new Date(eventDateObj.getTime() + 2 * 60 * 60 * 1000); // add 2 hours defaults
+        
+        let timeStr = eventDateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + " WIB";
+
+        if (sessionTime && typeof sessionTime === 'string') {
+            const match = sessionTime.match(/(\d{1,2})[:.](\d{2})\s*-\s*(\d{1,2})[:.](\d{2})/);
+            if (match) {
+                const [_, startH, startM, endH, endM] = match;
+                try {
+                    // Get YYYY-MM-DD in WIB
+                    const wibDateString = eventDateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); 
+                    eventDateObj = new Date(`${wibDateString}T${startH.padStart(2, '0')}:${startM}:00+07:00`);
+                    endDateObj = new Date(`${wibDateString}T${endH.padStart(2, '0')}:${endM}:00+07:00`);
+                } catch (e) {
+                    console.error('Failed to parse date from sessionTime:', e);
+                }
+            }
+            timeStr = `${sessionTime} WIB`;
+        }
+
         const dateStr = eventDateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
-        const timeStr = eventDateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + " WIB";
 
         // Generate ICS contents
         const formatDateForIcs = (date: Date) => {
             return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
         };
+
+        const fullEventName = sessionLabel ? `${eventName || 'Acara'} - ${sessionLabel}` : (eventName || 'Acara');
 
         const icsContent = [
             'BEGIN:VCALENDAR',
@@ -60,9 +80,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             `DTEND:${formatDateForIcs(endDateObj)}`,
             `DTSTAMP:${formatDateForIcs(new Date())}`,
             `UID:${finalTicketId}@belajarsambilberamal.com`,
-            `SUMMARY:Check-in: ${eventName || 'Acara'}`,
+            `SUMMARY:Check-in: ${fullEventName}`,
             `LOCATION:${location || ''}${location_detail ? ' (' + location_detail + ')' : ''}${location_link ? ' - ' + location_link : ''}`,
-            `DESCRIPTION:Tiket ID: ${finalTicketId}\\n\\nInformasi Acara:\\n- Tanggal: ${dateStr}\\n- Waktu: ${timeStr}\\n- Lokasi: ${location}\\n- Detail: ${location_detail || '-'}\\n- Link: ${location_link || '-'}\\n\\nTerima kasih telah mendaftar acara ${eventName || 'Acara'}.`,
+            `DESCRIPTION:Tiket ID: ${finalTicketId}\\n\\nInformasi Acara:\\n- Tanggal: ${dateStr}\\n- Waktu: ${timeStr}\\n- Lokasi: ${location}\\n- Detail: ${location_detail || '-'}\\n- Link: ${location_link || '-'}\\n\\nTerima kasih telah mendaftar acara ${fullEventName}.`,
             'STATUS:CONFIRMED',
             'SEQUENCE:0',
             'END:VEVENT',
@@ -96,7 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const mailOptions = {
             from: fromAddress,
             to: email,
-            subject: `Tiket Registrasi: ${eventName || 'Acara'}`,
+            subject: `Tiket Registrasi: ${fullEventName}`,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff;">
                     <div style="text-align: center; margin-bottom: 20px;">
@@ -105,10 +125,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     
                     <p style="color: #4b5563; line-height: 1.6; text-align: left;">
                         Halo <strong>${name}</strong>,<br/>
-                        Terima kasih telah mendaftar untuk acara <strong>${eventName || 'Acara'}</strong>. Pembayaran dan registrasi Anda telah kami terima dengan sukses.
+                        Terima kasih telah mendaftar untuk acara <strong>${fullEventName}</strong>. Pembayaran dan registrasi Anda telah kami terima dengan sukses.
                     </p>
 
                     <div style="background-color: #f8fafc; border-left: 4px solid #1a2c22; padding: 16px; margin: 20px 0; text-align: left;">
+                        ${sessionLabel ? `<p style="margin: 0 0 8px 0; color: #1f2937;"><strong>🎫 Sesi / Track:</strong> ${sessionLabel}</p>` : ''}
                         <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>📅 Tanggal:</strong> ${dateStr}</p>
                         <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>⏰ Waktu:</strong> ${timeStr}</p>
                         <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>📍 Lokasi:</strong> ${location || 'Online'}</p>

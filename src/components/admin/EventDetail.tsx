@@ -197,7 +197,7 @@ export const EventDetail: React.FC = () => {
                         { label: 'Sesi 2', quota: s2Quota, available: s2Available, paid: s2Paid, pending: s2Pending },
                     ].map(({ label, quota, available, paid: paidCount, pending: pendingCount }) => {
                         const used = quota - paidCount;
-                        const pct = quota > 0 ? Math.round((used / quota) * 100) : 0;
+                        const pct = quota > 0 ? Math.round((paidCount / quota) * 100) : 0;
                         const isFull = available <= 0;
                         const isLow = available > 0 && available <= 10;
                         return (

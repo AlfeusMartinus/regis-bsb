@@ -113,16 +113,18 @@ export const EventDetail: React.FC = () => {
     // ── Session-level quota breakdown ──────────────────────────────────────────
     const s1Quota = event.session1_quota ?? 0;
     const s2Quota = event.session2_quota ?? 0;
-    const s1Available = event.session1_available ?? 0;
-    const s2Available = event.session2_available ?? 0;
     const totalQuota = s1Quota + s2Quota;
-    const totalAvailable = s1Available + s2Available;
-
 
     const s1Paid = registrants.filter(r => r.session === 'session1' && SUCCESS_STATUSES.includes(r.status?.toLowerCase())).length;
     const s1Pending = registrants.filter(r => r.session === 'session1' && r.status?.toLowerCase() === 'pending').length;
     const s2Paid = registrants.filter(r => r.session === 'session2' && SUCCESS_STATUSES.includes(r.status?.toLowerCase())).length;
     const s2Pending = registrants.filter(r => r.session === 'session2' && r.status?.toLowerCase() === 'pending').length;
+
+    // Calculate availability dynamically based on paid count (as requested for live data)
+    const s1Available = Math.max(0, s1Quota - s1Paid);
+    const s2Available = Math.max(0, s2Quota - s2Paid);
+    const totalAvailable = s1Available + s2Available;
+
 
     return (
         <div className="max-w-6xl mx-auto space-y-5 p-4 md:p-6">

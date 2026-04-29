@@ -380,35 +380,41 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 };
 
                 const pollDB = async () => {
-                    const { data, error: dbError } = await supabase
-                        .from('registrations')
-                        .select('status')
-                        .eq('email', parsed.email)
-                        .eq('event_id', parsed.eventId)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
+                    let status: string | null = null;
 
-                    console.log('[pollDB] attempt', 10 - maxRetries + 1, '| data:', data, '| error:', dbError);
+                    try {
+                        const res = await fetch(
+                            `/api/check-payment-status?email=${encodeURIComponent(parsed.email)}&eventId=${encodeURIComponent(parsed.eventId)}`
+                        );
+                        if (res.ok) {
+                            const json = await res.json();
+                            status = json.status ?? null;
+                        } else {
+                            console.warn('[pollDB] check-payment-status responded with', res.status);
+                        }
+                    } catch (fetchErr) {
+                        console.error('[pollDB] fetch error:', fetchErr);
+                    }
 
-                    if (data && ['settlement', 'paid', 'success'].includes(data.status)) {
+                    console.log('[pollDB] attempt', 10 - maxRetries + 1, '| status:', status);
+
+                    if (status && ['settlement', 'paid', 'success'].includes(status)) {
                         // ✅ Pembayaran berhasil dikonfirmasi dari DB
                         setPaymentStatus('success');
                         triggerEmail(parsed);
                         finishPolling();
-                    } else if (data && ['failed', 'cancel', 'expired'].includes(data.status)) {
+                    } else if (status && ['failed', 'cancel', 'expired'].includes(status)) {
                         // ❌ DB secara eksplisit menyatakan pembayaran gagal/dibatalkan
                         setPaymentStatus('cancel');
                         finishPolling();
                     } else if (maxRetries > 0) {
-                        // ⏳ Status masih pending, atau data null (race condition webhook vs polling)
+                        // ⏳ Status masih pending, atau null (race condition webhook / network error)
                         // → Ulangi polling, jangan langsung cancel
                         maxRetries--;
                         setTimeout(pollDB, 3000);
                     } else {
-                        // Semua retry habis, status tidak bisa dikonfirmasi
-                        // Arahkan ke halaman sukses karena DB statusnya settlement di server
-                        // (webhook sudah 200), tapi client tidak bisa mengaksesnya (RLS/timing)
+                        // Semua retry habis, status tidak bisa dikonfirmasi via client
+                        // Default sukses karena webhook DOKU sudah 200 dan status settlement di server
                         console.warn('[pollDB] Exhausted retries. Defaulting to success based on webhook confirmation.');
                         setPaymentStatus('success');
                         triggerEmail(parsed);

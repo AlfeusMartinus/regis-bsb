@@ -378,7 +378,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         .from('registrations')
                         .select('status')
                         .eq('email', parsed.email)
-                        .eq('event_id', eventId)
+                        .eq('event_id', parsed.eventId)
                         .order('created_at', { ascending: false })
                         .limit(1)
                         .maybeSingle();

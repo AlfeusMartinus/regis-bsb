@@ -396,8 +396,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         console.error('[pollDB] fetch error:', fetchErr);
                     }
 
-                    console.log('[pollDB] attempt', 10 - maxRetries + 1, '| status:', status);
-
                     if (status && ['settlement', 'paid', 'success'].includes(status)) {
                         // ✅ Pembayaran berhasil dikonfirmasi dari DB
                         setPaymentStatus('success');

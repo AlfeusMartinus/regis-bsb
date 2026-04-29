@@ -52,10 +52,7 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                     schema: 'public',
                     table: 'registrations',
                 },
-                (payload) => {
-                    console.log('Realtime update received:', payload);
-                    fetchRegistrants(); // Re-fetch data to reflect changes (e.g. status update)
-                }
+                () => fetchRegistrants() // Re-fetch data to reflect changes (e.g. status update)
             )
             .subscribe();
 

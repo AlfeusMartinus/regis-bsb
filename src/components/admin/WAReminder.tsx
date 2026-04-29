@@ -30,7 +30,6 @@ export const checkAndExpireTransactions = async () => {
     if (updateError) {
         console.error('Error expiring transactions:', updateError);
     } else {
-        console.log(`Expired ${idsToExpire.length} transaction(s). Restoring quotas...`);
         // Restore quota for each expired transaction
         for (const reg of pendingRegs) {
             if (reg.event_id && reg.session) {

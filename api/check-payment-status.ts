@@ -32,11 +32,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Missing required query params: email, eventId' });
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
+    // VITE_SUPABASE_URL is available in Vercel Node.js runtime (all env vars are readable server-side)
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-        console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+        console.error('Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
         return res.status(500).json({ error: 'Server configuration error' });
     }
 

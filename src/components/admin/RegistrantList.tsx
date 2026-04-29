@@ -53,7 +53,6 @@ export const RegistrantList: React.FC<RegistrantListProps> = ({ mode = 'transact
                     table: 'registrations',
                 },
                 (payload) => {
-                    console.log('Realtime update received:', payload);
                     fetchRegistrants(); // Re-fetch data to reflect changes (e.g. status update)
                 }
             )

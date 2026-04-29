@@ -207,7 +207,7 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                                                     <span className="text-[10px] font-bold text-emerald-600 tracking-wider uppercase">Live</span>
                                                 </div>
                                                 <div className="text-[11px] font-bold text-[#111814]">
-                                                    {session.available} <span className="text-gray-400 font-medium">/ {session.quota}</span>
+                                                    {session.quota - session.available} <span className="text-gray-400 font-medium">/ {session.quota}</span>
                                                 </div>
                                             </div>
                                             

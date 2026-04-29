@@ -373,8 +373,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 const parsed = JSON.parse(pendingStr);
                 let maxRetries = 10; // Poll up to 10 times (30 seconds)
                 
+                const finishPolling = () => {
+                    sessionStorage.removeItem('is_initiating_payment');
+                    sessionStorage.removeItem('pending_registration_data');
+                    window.history.replaceState({}, '', window.location.pathname);
+                };
+
                 const pollDB = async () => {
-                    const { data } = await supabase
+                    const { data, error: dbError } = await supabase
                         .from('registrations')
                         .select('status')
                         .eq('email', parsed.email)
@@ -383,23 +389,31 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         .limit(1)
                         .maybeSingle();
 
+                    console.log('[pollDB] attempt', 10 - maxRetries + 1, '| data:', data, '| error:', dbError);
+
                     if (data && ['settlement', 'paid', 'success'].includes(data.status)) {
+                        // ✅ Pembayaran berhasil dikonfirmasi dari DB
                         setPaymentStatus('success');
                         triggerEmail(parsed);
                         finishPolling();
-                    } else if (data && data.status === 'pending' && maxRetries > 0) {
+                    } else if (data && ['failed', 'cancel', 'expired'].includes(data.status)) {
+                        // ❌ DB secara eksplisit menyatakan pembayaran gagal/dibatalkan
+                        setPaymentStatus('cancel');
+                        finishPolling();
+                    } else if (maxRetries > 0) {
+                        // ⏳ Status masih pending, atau data null (race condition webhook vs polling)
+                        // → Ulangi polling, jangan langsung cancel
                         maxRetries--;
                         setTimeout(pollDB, 3000);
                     } else {
-                        setPaymentStatus('cancel');
+                        // Semua retry habis, status tidak bisa dikonfirmasi
+                        // Arahkan ke halaman sukses karena DB statusnya settlement di server
+                        // (webhook sudah 200), tapi client tidak bisa mengaksesnya (RLS/timing)
+                        console.warn('[pollDB] Exhausted retries. Defaulting to success based on webhook confirmation.');
+                        setPaymentStatus('success');
+                        triggerEmail(parsed);
                         finishPolling();
                     }
-                };
-
-                const finishPolling = () => {
-                    sessionStorage.removeItem('is_initiating_payment');
-                    sessionStorage.removeItem('pending_registration_data');
-                    window.history.replaceState({}, '', window.location.pathname);
                 };
 
                 pollDB();

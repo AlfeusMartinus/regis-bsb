@@ -18,6 +18,11 @@ export const BwaiPublicTemplate: React.FC<PublicEventTemplateProps> = ({ event }
     const [selectedSession, setSelectedSession] = useState<SessionKey | null>(null);
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'cancel'>('idle');
 
+    // Cek apakah semua session sudah penuh
+    const session1Available = event.session1_available ?? event.session1_quota ?? 125;
+    const session2Available = event.session2_available ?? event.session2_quota ?? 125;
+    const allTracksFull = session1Available <= 0 && session2Available <= 0;
+
     return (
         <EventThemeProvider theme={bwaiTheme}>
             <BwaiPublicLayout
@@ -30,20 +35,21 @@ export const BwaiPublicTemplate: React.FC<PublicEventTemplateProps> = ({ event }
                     />
                 }
             >
-                <RegistrationForm
-                    eventId={event.id}
-                    eventName={event.title}
-                    eventSlug={event.slug}
-                    ticketPrice={event.ticket_price ?? 35000}
-                    event={event}
-                    selectedSession={selectedSession}
-                    onSessionSelect={setSelectedSession}
-                    onStatusChange={setPaymentStatus}
-                    hideStepper
-                    uiVariant="bwai"
-                />
+                {!allTracksFull && (
+                    <RegistrationForm
+                        eventId={event.id}
+                        eventName={event.title}
+                        eventSlug={event.slug}
+                        ticketPrice={event.ticket_price ?? 35000}
+                        event={event}
+                        selectedSession={selectedSession}
+                        onSessionSelect={setSelectedSession}
+                        onStatusChange={setPaymentStatus}
+                        hideStepper
+                        uiVariant="bwai"
+                    />
+                )}
             </BwaiPublicLayout>
         </EventThemeProvider>
     );
 };
-

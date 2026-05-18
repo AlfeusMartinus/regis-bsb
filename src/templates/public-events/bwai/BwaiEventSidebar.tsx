@@ -53,26 +53,26 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
 
     const speakers = selectedSession === 'session1'
         ? [
-              { 
-                  name: 'Cassandra Chaidir', 
+              {
+                  name: 'Cassandra Chaidir',
                   title: 'Tech Architecture Specialist at Accenture, GDE Cloud',
                   photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/9yw94ec3l9i.jpeg'
               },
-              { 
-                  name: 'Surahutomo Aziz Pradana', 
+              {
+                  name: 'Surahutomo Aziz Pradana',
                   title: 'GDE Firebase, Cloud, & AI',
                   photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/ut9tuqgy9m.png'
               },
           ]
         : selectedSession === 'session2'
         ? [
-              { 
-                  name: 'Rendy Bambang Junior', 
+              {
+                  name: 'Rendy Bambang Junior',
                   title: 'VP of Data at Evermos, GDE Cloud & AI',
                   photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/81zpynfgpjj.jpg'
               },
-              { 
-                  name: 'Jessica Cecilia', 
+              {
+                  name: 'Jessica Cecilia',
                   title: 'Software Engineer at Omni HR, GDE Web',
                   photo_url: 'https://qtwxxqfulqrpuerjmtya.supabase.co/storage/v1/object/public/event-images/rovx1qohic.jpg'
               },
@@ -82,6 +82,13 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
         : [];
 
     const titlePillText = displayEvent?.title ? displayEvent.title : 'BWA1 2026';
+
+    // Cek apakah semua track sudah penuh
+    const allTracksFull = sessions.every((s) => s.available <= 0);
+
+    // Total tiket terjual
+    const totalSold = sessions.reduce((sum, s) => sum + (s.quota - s.available), 0);
+    const totalQuota = sessions.reduce((sum, s) => sum + s.quota, 0);
 
     return (
         <div className="flex flex-col">
@@ -141,9 +148,9 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                             </div>
                         )}
                         {displayEvent?.location_link && (
-                            <a 
-                                href={displayEvent.location_link} 
-                                target="_blank" 
+                            <a
+                                href={displayEvent.location_link}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold uppercase hover:bg-emerald-100 transition-colors w-full justify-center border border-emerald-200/50"
                             >
@@ -154,8 +161,8 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                 </div>
             </div>
 
-            {/* Track selector */}
-            {!hideTracks && (
+            {/* Track selector — tampil hanya jika track belum full semua */}
+            {!hideTracks && !allTracksFull && (
                 <div className="mb-8">
                     <div className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">
                         CHOOSE YOUR TRACK
@@ -210,10 +217,10 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                                                     {session.quota - session.available} <span className="text-gray-400 font-medium">/ {session.quota}</span>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Progress Bar Kapasitas */}
                                             <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative">
-                                                <div 
+                                                <div
                                                     className={[
                                                         'h-full transition-all duration-1000 ease-out rounded-full relative',
                                                         (session.available / session.quota) < 0.2 ? 'bg-red-500' : (session.available / session.quota) < 0.5 ? 'bg-amber-500' : 'bg-primary'
@@ -231,7 +238,7 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                                                     100% { transform: translateX(100%); }
                                                 }
                                             `}} />
-                                            
+
                                             <div className="mt-2 flex items-center justify-between">
                                                 <div className="text-[11px] font-bold text-[#111814]">
                                                     Sisa {session.available} kursi
@@ -247,6 +254,50 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
                                 </button>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Thank you card — tampil ketika semua track sudah penuh */}
+            {!hideTracks && allTracksFull && (
+                <div className="mb-8">
+                    <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/60 p-6 text-center">
+                        {/* Icon */}
+                        <div className="mx-auto mb-4 flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100">
+                            <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+
+                        <h3 className="text-lg font-bold text-[#111814] mb-2">
+                            Thank You!
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                            Thank you for your enthusiasm! All tickets for this event have been sold out.
+                            See you at the next BWAI event!
+                        </p>
+
+                        {/* Tickets sold */}
+                        <div className="inline-flex items-center gap-3 px-5 py-3 rounded-xl bg-white border border-emerald-200 shadow-sm">
+                            <div className="text-left">
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tickets Sold</div>
+                                <div className="text-xl font-extrabold text-[#111814]">
+                                    {totalSold}
+                                    <span className="text-sm font-medium text-gray-400"> / {totalQuota}</span>
+                                </div>
+                            </div>
+                            <div className="w-px h-10 bg-emerald-200" />
+                            <div className="text-left">
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</div>
+                                <div className="flex items-center gap-1.5 text-sm font-bold text-red-500">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                    </span>
+                                    SOLD OUT
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -293,4 +344,3 @@ export const BwaiEventSidebar: React.FC<BwaiEventSidebarProps> = ({
         </div>
     );
 };
-
